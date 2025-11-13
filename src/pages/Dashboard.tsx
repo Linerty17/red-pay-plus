@@ -22,6 +22,44 @@ import advert2 from "@/assets/advert-2.png";
 
 const Dashboard = () => {
   const [balance] = useState(160000);
+  const [userId] = useState("123456789012");
+  const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState("");
+
+  // Claim timer effect
+  useState(() => {
+    if (nextClaimAt) {
+      const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = nextClaimAt.getTime() - now;
+
+        if (distance < 0) {
+          setTimeLeft("");
+          setNextClaimAt(null);
+          clearInterval(interval);
+        } else {
+          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          setTimeLeft(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  });
+
+  const handleClaim = () => {
+    if (nextClaimAt) {
+      toast.error(`Next claim in ${timeLeft}`);
+      return;
+    }
+    
+    toast.success("Success — ₦30,000 added to your wallet!");
+    const next = new Date();
+    next.setHours(next.getHours() + 24);
+    setNextClaimAt(next);
+  };
 
   const handleAction = (action: string) => {
     toast.info(`${action} feature coming soon!`);
@@ -70,19 +108,25 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-3">
-              <div className="text-3xl font-bold text-primary-foreground">
-                ₦{balance.toLocaleString()}
+              <div className="space-y-1">
+                <div className="text-3xl font-bold text-primary-foreground">
+                  ₦{balance.toLocaleString()}
+                </div>
+                <div className="text-xs text-primary-foreground/60">
+                  ID: {userId}
+                </div>
               </div>
 
               <div className="flex gap-2">
                 <Button
-                  onClick={() => handleAction("Claim")}
+                  onClick={handleClaim}
                   variant="secondary"
                   size="sm"
                   className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm"
+                  disabled={!!nextClaimAt}
                 >
                   <Gift className="w-3 h-3 mr-1" />
-                  Claim
+                  {nextClaimAt ? `Next claim in ${timeLeft}` : "Claim ₦30,000"}
                 </Button>
                 <Button
                   onClick={() => handleAction("Withdraw")}
