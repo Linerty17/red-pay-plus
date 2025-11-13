@@ -41,53 +41,56 @@ const Dashboard = () => {
       <LiquidBackground />
 
       {/* Header */}
-      <header className="relative z-10 px-4 py-4 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
+      <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
         <Logo />
         <ProfileButton />
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 px-4 py-8 max-w-4xl mx-auto space-y-8">
+      <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto space-y-3">
         {/* Video Button - Above Balance */}
         <div className="flex justify-end">
           <Button
             onClick={() => handleAction("Video")}
             variant="outline"
+            size="sm"
             className="bg-primary/10 hover:bg-primary/20 border-primary text-primary font-semibold"
           >
-            <Video className="w-4 h-4 mr-2" />
+            <Video className="w-3 h-3 mr-1" />
             Video
           </Button>
         </div>
 
         {/* Balance Card */}
         <Card className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-primary shadow-glow animate-fade-in">
-          <CardContent className="pt-8 pb-8 px-6 space-y-6">
-            <div className="flex items-center gap-3 text-primary-foreground/80">
-              <Wallet className="w-6 h-6" />
-              <span className="text-lg font-medium">Total Balance</span>
+          <CardContent className="pt-4 pb-4 px-4 space-y-3">
+            <div className="flex items-center gap-2 text-primary-foreground/80">
+              <Wallet className="w-4 h-4" />
+              <span className="text-sm font-medium">Total Balance</span>
             </div>
 
-            <div className="space-y-4">
-              <div className="text-5xl font-bold text-primary-foreground">
+            <div className="space-y-3">
+              <div className="text-3xl font-bold text-primary-foreground">
                 ₦{balance.toLocaleString()}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <Button
                   onClick={() => handleAction("Claim")}
                   variant="secondary"
+                  size="sm"
                   className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm"
                 >
-                  <Gift className="w-4 h-4 mr-2" />
+                  <Gift className="w-3 h-3 mr-1" />
                   Claim
                 </Button>
                 <Button
                   onClick={() => handleAction("Withdraw")}
                   variant="secondary"
+                  size="sm"
                   className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm"
                 >
-                  <Send className="w-4 h-4 mr-2" />
+                  <Send className="w-3 h-3 mr-1" />
                   Withdraw
                 </Button>
               </div>
@@ -98,12 +101,12 @@ const Dashboard = () => {
         {/* Advert 1 */}
         <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden">
           <CardContent className="p-0">
-            <img src={advert1} alt="RedPay Advertisement" className="w-full h-auto" />
+            <img src={advert1} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
           </CardContent>
         </Card>
 
         {/* Action Buttons Grid - 3x2 */}
-        <div className="grid grid-cols-3 gap-4 animate-fade-in">
+        <div className="grid grid-cols-3 gap-2 animate-fade-in">
           {actionButtons.map((button, index) => (
             <a
               key={index}
@@ -111,11 +114,11 @@ const Dashboard = () => {
               className="block"
             >
               <Card className="bg-card/60 backdrop-blur-sm border-border hover-lift cursor-pointer transition-all h-full">
-                <CardContent className="p-4 flex flex-col items-center justify-center space-y-2 text-center">
-                  <div className={`w-14 h-14 ${button.color} rounded-2xl flex items-center justify-center`}>
-                    <button.icon className="w-7 h-7 text-white" />
+                <CardContent className="p-3 flex flex-col items-center justify-center space-y-1 text-center">
+                  <div className={`w-10 h-10 ${button.color} rounded-xl flex items-center justify-center`}>
+                    <button.icon className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="font-semibold text-sm text-foreground">{button.label}</h3>
+                  <h3 className="font-semibold text-xs text-foreground">{button.label}</h3>
                 </CardContent>
               </Card>
             </a>
@@ -125,7 +128,7 @@ const Dashboard = () => {
         {/* Advert 2 */}
         <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden">
           <CardContent className="p-0">
-            <img src={advert2} alt="RedPay Advertisement" className="w-full h-auto" />
+            <img src={advert2} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
           </CardContent>
         </Card>
       </main>
