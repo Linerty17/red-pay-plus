@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
@@ -16,6 +16,7 @@ import {
   HeadphonesIcon,
   Send,
 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import advert1 from "@/assets/advert-1.png";
 import advert2 from "@/assets/advert-2.png";
