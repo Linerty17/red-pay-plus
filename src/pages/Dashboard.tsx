@@ -16,19 +16,46 @@ import {
   HeadphonesIcon,
   Send,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import advert1 from "@/assets/advert-1.png";
 import advert2 from "@/assets/advert-2.png";
 
 const Dashboard = () => {
-  const [balance] = useState(160000);
-  const [userId] = useState("123456789012");
+  const [balance, setBalance] = useState(160000);
+  const [userId] = useState(() => {
+    let id = localStorage.getItem("userId");
+    if (!id) {
+      id = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+      localStorage.setItem("userId", id);
+    }
+    return id;
+  });
   const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
 
+  // Initialize balance and claim timer from localStorage
+  useEffect(() => {
+    const savedBalance = localStorage.getItem("balance");
+    if (savedBalance) {
+      setBalance(parseInt(savedBalance));
+    } else {
+      localStorage.setItem("balance", "160000");
+    }
+
+    const savedClaimTime = localStorage.getItem("nextClaimAt");
+    if (savedClaimTime) {
+      const claimDate = new Date(savedClaimTime);
+      if (claimDate.getTime() > Date.now()) {
+        setNextClaimAt(claimDate);
+      } else {
+        localStorage.removeItem("nextClaimAt");
+      }
+    }
+  }, []);
+
   // Claim timer effect
-  useState(() => {
+  useEffect(() => {
     if (nextClaimAt) {
       const interval = setInterval(() => {
         const now = new Date().getTime();
@@ -37,6 +64,7 @@ const Dashboard = () => {
         if (distance < 0) {
           setTimeLeft("");
           setNextClaimAt(null);
+          localStorage.removeItem("nextClaimAt");
           clearInterval(interval);
         } else {
           const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -48,7 +76,7 @@ const Dashboard = () => {
 
       return () => clearInterval(interval);
     }
-  });
+  }, [nextClaimAt]);
 
   const handleClaim = () => {
     if (nextClaimAt) {
@@ -56,10 +84,20 @@ const Dashboard = () => {
       return;
     }
     
+    const newBalance = balance + 30000;
+    setBalance(newBalance);
+    localStorage.setItem("balance", newBalance.toString());
+    
     toast.success("Success — ₦30,000 added to your wallet!");
+    
     const next = new Date();
     next.setHours(next.getHours() + 24);
     setNextClaimAt(next);
+    localStorage.setItem("nextClaimAt", next.toISOString());
+  };
+
+  const handleWithdraw = () => {
+    window.location.href = "/withdraw";
   };
 
   const handleAction = (action: string) => {
@@ -130,7 +168,7 @@ const Dashboard = () => {
                   {nextClaimAt ? `Next claim in ${timeLeft}` : "Claim ₦30,000"}
                 </Button>
                 <Button
-                  onClick={() => handleAction("Withdraw")}
+                  onClick={handleWithdraw}
                   variant="secondary"
                   size="sm"
                   className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm"
@@ -153,9 +191,9 @@ const Dashboard = () => {
         {/* Action Buttons Grid - 3x2 */}
         <div className="grid grid-cols-3 gap-2 animate-fade-in">
           {actionButtons.map((button, index) => (
-            <a
+            <Link
               key={index}
-              href={button.route}
+              to={button.route}
               className="block"
             >
               <Card className="bg-card/60 backdrop-blur-sm border-border hover-lift cursor-pointer transition-all h-full">
@@ -166,7 +204,7 @@ const Dashboard = () => {
                   <h3 className="font-semibold text-xs text-foreground">{button.label}</h3>
                 </CardContent>
               </Card>
-            </a>
+            </Link>
           ))}
         </div>
 

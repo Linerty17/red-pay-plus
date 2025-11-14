@@ -26,6 +26,23 @@ const Auth = () => {
 
     const formData = new FormData(e.currentTarget);
     const firstName = formData.get("firstName") as string;
+    const lastName = formData.get("lastName") as string;
+    const phone = formData.get("phone") as string;
+    const email = formData.get("email") as string;
+    const country = formData.get("country") as string;
+
+    // Generate 10-digit user ID
+    const userId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const referralCode = `REF${Math.floor(100000 + Math.random() * 900000)}`;
+
+    // Save user data to localStorage
+    localStorage.setItem("userName", `${firstName} ${lastName}`);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userPhone", phone);
+    localStorage.setItem("userCountry", country);
+    localStorage.setItem("userId", userId);
+    localStorage.setItem("referralCode", referralCode);
+    localStorage.setItem("balance", "160000");
 
     // Simulate API call
     setTimeout(() => {

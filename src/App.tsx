@@ -11,6 +11,9 @@ import Broadcast from "./pages/Broadcast";
 import Support from "./pages/Support";
 import History from "./pages/History";
 import BuyRPC from "./pages/BuyRPC";
+import PaymentInstructions from "./pages/PaymentInstructions";
+import Withdraw from "./pages/Withdraw";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/support" element={<Support />} />
           <Route path="/history" element={<History />} />
           <Route path="/buyrpc" element={<BuyRPC />} />
+          <Route path="/payment-instructions" element={<PaymentInstructions />} />
+          <Route path="/withdraw" element={<Withdraw />} />
+          <Route path="/profile" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
