@@ -10,7 +10,6 @@ import {
   Gift,
   ShoppingBag,
   Radio,
-  ListChecks,
   Users,
   History,
   HeadphonesIcon,
@@ -88,6 +87,17 @@ const Dashboard = () => {
     setBalance(newBalance);
     localStorage.setItem("balance", newBalance.toString());
     
+    // Save transaction to history
+    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+    transactions.unshift({
+      id: Date.now(),
+      type: "credit",
+      title: "Daily Claim Bonus",
+      date: new Date().toLocaleString(),
+      amount: "+₦30,000",
+    });
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+    
     toast.success("Success — ₦30,000 added to your wallet!");
     
     const next = new Date();
@@ -107,7 +117,7 @@ const Dashboard = () => {
   const actionButtons = [
     { icon: ShoppingBag, label: "BuyRPC", color: "bg-primary", route: "/buyrpc" },
     { icon: Radio, label: "Broadcast", color: "bg-purple-600", route: "/broadcast" },
-    { icon: ListChecks, label: "Tasks", color: "bg-blue-600", route: "/tasks" },
+    { icon: Gift, label: "Refer&Earn", color: "bg-blue-600", route: "/refer-earn" },
     { icon: Users, label: "Community", color: "bg-green-600", route: "/community" },
     { icon: History, label: "History", color: "bg-orange-600", route: "/history" },
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },

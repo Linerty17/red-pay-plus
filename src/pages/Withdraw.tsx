@@ -22,7 +22,6 @@ const Withdraw = () => {
     rpcCode: "",
   });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [userId] = useState(localStorage.getItem("userId") || "1234567890");
   const [currentBalance, setCurrentBalance] = useState(0);
 
@@ -78,30 +77,21 @@ const Withdraw = () => {
     localStorage.setItem("balance", newBalance.toString());
     
     setLoading(false);
-    setSuccess(true);
     
-    setTimeout(() => {
-      toast.success("Withdrawal successful!");
-      navigate("/dashboard");
-    }, 2000);
+    // Save transaction to history
+    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+    transactions.unshift({
+      id: Date.now(),
+      type: "debit",
+      title: "Withdrawal",
+      date: new Date().toLocaleString(),
+      amount: `-₦${withdrawAmount.toLocaleString()}`,
+    });
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+    
+    navigate(`/success?type=withdraw&amount=${withdrawAmount.toLocaleString()}`);
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen w-full relative flex items-center justify-center">
-        <LiquidBackground />
-        <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
-          <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="text-xl font-bold text-foreground">Withdrawal Successful!</h2>
-            <p className="text-sm text-muted-foreground">Your funds will be processed within 24 hours</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -211,10 +201,11 @@ const Withdraw = () => {
                 <Label htmlFor="rpcCode" className="text-xs">Enter RPC Code</Label>
                 <Input
                   id="rpcCode"
-                  placeholder="RPC2007"
+                  type="password"
+                  placeholder="••••••••"
                   value={formData.rpcCode}
                   onChange={(e) => setFormData({ ...formData, rpcCode: e.target.value.toUpperCase() })}
-                  className="h-9 font-mono"
+                  className="h-9"
                 />
                 <p className="text-xs text-destructive">⚠️ RPC code is required for withdrawal</p>
               </div>

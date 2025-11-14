@@ -14,6 +14,8 @@ import BuyRPC from "./pages/BuyRPC";
 import PaymentInstructions from "./pages/PaymentInstructions";
 import Withdraw from "./pages/Withdraw";
 import Profile from "./pages/Profile";
+import SuccessPage from "./pages/SuccessPage";
+import ReferEarn from "./pages/ReferEarn";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,8 @@ const App = () => (
           <Route path="/payment-instructions" element={<PaymentInstructions />} />
           <Route path="/withdraw" element={<Withdraw />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/success" element={<SuccessPage />} />
+          <Route path="/refer-earn" element={<ReferEarn />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
