@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,16 +12,37 @@ import { Phone, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 const Broadcast = () => {
+  const navigate = useNavigate();
   const [isAirtime, setIsAirtime] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [rpcCode, setRpcCode] = useState("");
 
   const handlePurchase = () => {
-    if (!phoneNumber || !amount) {
+    if (!phoneNumber || !amount || !rpcCode) {
       toast.error("Please fill in all fields");
       return;
     }
-    toast.success(`${isAirtime ? "Airtime" : "Data"} purchase initiated!`);
+
+    // Check RPC code
+    const rpcPurchased = localStorage.getItem("rpcPurchased") === "true";
+    const savedRPCCode = localStorage.getItem("rpcCode");
+    
+    if (!rpcPurchased) {
+      toast.error("RPC Code required. Please purchase RPC first.");
+      navigate("/buyrpc");
+      return;
+    }
+
+    if (rpcCode !== savedRPCCode) {
+      toast.error("Invalid RPC Code");
+      return;
+    }
+
+    toast.success(`${isAirtime ? "Airtime" : "Data"} purchase successful!`);
+    setPhoneNumber("");
+    setAmount("");
+    setRpcCode("");
   };
 
   return (
@@ -115,7 +137,19 @@ const Broadcast = () => {
               </div>
             </div>
 
-            <Button
+              <div className="space-y-2">
+                <Label htmlFor="rpcCode">RPC Code</Label>
+                <Input
+                  id="rpcCode"
+                  placeholder="Enter RPC Code (e.g. RPC2007)"
+                  value={rpcCode}
+                  onChange={(e) => setRpcCode(e.target.value.toUpperCase())}
+                  className="bg-background/50 font-mono"
+                />
+                <p className="text-xs text-destructive">⚠️ RPC code is required to proceed</p>
+              </div>
+
+              <Button
               onClick={handlePurchase}
               className="w-full"
               size="lg"

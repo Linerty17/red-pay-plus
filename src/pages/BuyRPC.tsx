@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,20 @@ const BuyRPC = () => {
   const [loadingStep, setLoadingStep] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const navigate = useNavigate();
+  const [userId] = useState(localStorage.getItem("userId") || "1234567890");
+
+  useEffect(() => {
+    // Pre-fill form with saved data
+    const name = localStorage.getItem("userName") || "";
+    const email = localStorage.getItem("userEmail") || "";
+    const phone = localStorage.getItem("userPhone") || "";
+    
+    if (name || email || phone) {
+      setFormData({ name, email, phone });
+    }
+  }, []);
+
   const handleProceed = async () => {
     if (!formData.name || !formData.email || !formData.phone) {
       toast.error("Please fill in all fields");
@@ -33,17 +48,13 @@ const BuyRPC = () => {
     setLoadingStep("Verifying");
     
     await new Promise(resolve => setTimeout(resolve, 1000));
-    setLoadingStep("Processing Payment");
+    setLoadingStep("Processing");
     
     await new Promise(resolve => setTimeout(resolve, 1000));
     setLoading(false);
-    setSuccess(true);
     
-    setTimeout(() => {
-      toast.success("Payment Successful!");
-      setSuccess(false);
-      setFormData({ name: "", email: "", phone: "" });
-    }, 2000);
+    // Navigate to payment instructions
+    navigate("/payment-instructions");
   };
 
   if (success) {
@@ -96,6 +107,16 @@ const BuyRPC = () => {
             </div>
 
             <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="userId" className="text-xs">User ID</Label>
+                <Input
+                  id="userId"
+                  value={userId}
+                  disabled
+                  className="h-9 bg-secondary/20 font-mono"
+                />
+              </div>
+
               <div className="space-y-1">
                 <Label htmlFor="name" className="text-xs">Full Name</Label>
                 <Input
