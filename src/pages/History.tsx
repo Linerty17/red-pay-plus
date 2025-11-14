@@ -5,32 +5,18 @@ import ProfileButton from "@/components/ProfileButton";
 import { ArrowDownLeft, ArrowUpRight, ShoppingBag } from "lucide-react";
 
 const History = () => {
-  const transactions = [
-    {
-      id: 1,
-      type: "credit",
-      title: "Welcome Bonus",
-      date: "Today, 2:30 PM",
-      amount: "+₦160,000",
-      icon: ArrowDownLeft,
-    },
-    {
-      id: 2,
-      type: "debit",
-      title: "Airtime Purchase",
-      date: "Yesterday, 5:45 PM",
-      amount: "-₦500",
-      icon: ShoppingBag,
-    },
-    {
-      id: 3,
-      type: "debit",
-      title: "Withdrawal",
-      date: "Dec 10, 2024",
-      amount: "-₦10,000",
-      icon: ArrowUpRight,
-    },
-  ];
+  const storedTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+  
+  const getIcon = (title: string) => {
+    if (title.includes("Bonus") || title.includes("Claim")) return ArrowDownLeft;
+    if (title.includes("Withdrawal")) return ArrowUpRight;
+    return ShoppingBag;
+  };
+
+  const transactions = storedTransactions.map((tx: any) => ({
+    ...tx,
+    icon: getIcon(tx.title),
+  }));
 
   return (
     <div className="min-h-screen w-full relative">
@@ -51,7 +37,10 @@ const History = () => {
 
         <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
           <CardContent className="p-6">
-            <div className="space-y-1">
+            {transactions.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No transactions yet</p>
+            ) : (
+              <div className="space-y-1">
               {transactions.map((transaction) => (
                 <div
                   key={transaction.id}
@@ -93,7 +82,8 @@ const History = () => {
                   </span>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

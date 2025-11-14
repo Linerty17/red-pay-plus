@@ -39,10 +39,18 @@ const Broadcast = () => {
       return;
     }
 
-    toast.success(`${isAirtime ? "Airtime" : "Data"} purchase successful!`);
-    setPhoneNumber("");
-    setAmount("");
-    setRpcCode("");
+    // Save transaction to history
+    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
+    transactions.unshift({
+      id: Date.now(),
+      type: "debit",
+      title: `${isAirtime ? "Airtime" : "Data"} Purchase`,
+      date: new Date().toLocaleString(),
+      amount: `-₦${amount}`,
+    });
+    localStorage.setItem("transactions", JSON.stringify(transactions));
+    
+    navigate(`/success?type=${isAirtime ? "airtime" : "data"}&amount=${amount}`);
   };
 
   return (
@@ -141,10 +149,11 @@ const Broadcast = () => {
                 <Label htmlFor="rpcCode">RPC Code</Label>
                 <Input
                   id="rpcCode"
-                  placeholder="Enter RPC Code (e.g. RPC2007)"
+                  type="password"
+                  placeholder="••••••••"
                   value={rpcCode}
                   onChange={(e) => setRpcCode(e.target.value.toUpperCase())}
-                  className="bg-background/50 font-mono"
+                  className="bg-background/50"
                 />
                 <p className="text-xs text-destructive">⚠️ RPC code is required to proceed</p>
               </div>
