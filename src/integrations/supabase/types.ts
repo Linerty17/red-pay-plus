@@ -14,7 +14,226 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      referrals: {
+        Row: {
+          amount_given: number | null
+          created_at: string | null
+          date: string | null
+          id: string
+          new_user_id: string
+          referrer_id: string
+        }
+        Insert: {
+          amount_given?: number | null
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          new_user_id: string
+          referrer_id: string
+        }
+        Update: {
+          amount_given?: number | null
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          new_user_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_new_user_id_fkey"
+            columns: ["new_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      rpc_purchases: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          email: string
+          id: string
+          phone: string
+          proof_image: string | null
+          rpc_code_issued: string | null
+          user_id: string
+          user_name: string
+          user_unique_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          email: string
+          id?: string
+          phone: string
+          proof_image?: string | null
+          rpc_code_issued?: string | null
+          user_id: string
+          user_name: string
+          user_unique_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          email?: string
+          id?: string
+          phone?: string
+          proof_image?: string | null
+          rpc_code_issued?: string | null
+          user_id?: string
+          user_name?: string
+          user_unique_id?: string
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rpc_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string | null
+          date: string | null
+          id: string
+          proof_image: string | null
+          reference_id: string | null
+          title: string
+          transaction_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          proof_image?: string | null
+          reference_id?: string | null
+          title: string
+          transaction_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          proof_image?: string | null
+          reference_id?: string | null
+          title?: string
+          transaction_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          auth_user_id: string | null
+          balance: number | null
+          country: string
+          created_at: string | null
+          email: string
+          first_name: string
+          id: string
+          last_claim_at: string | null
+          last_name: string
+          phone: string
+          referral_code: string
+          referred_by: string | null
+          rpc_code: string | null
+          rpc_purchased: boolean | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          balance?: number | null
+          country: string
+          created_at?: string | null
+          email: string
+          first_name: string
+          id?: string
+          last_claim_at?: string | null
+          last_name: string
+          phone: string
+          referral_code: string
+          referred_by?: string | null
+          rpc_code?: string | null
+          rpc_purchased?: boolean | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          balance?: number | null
+          country?: string
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          last_claim_at?: string | null
+          last_name?: string
+          phone?: string
+          referral_code?: string
+          referred_by?: string | null
+          rpc_code?: string | null
+          rpc_purchased?: boolean | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
