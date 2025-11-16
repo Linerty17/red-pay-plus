@@ -19,39 +19,24 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import advert1 from "@/assets/advert-1.png";
 import advert2 from "@/assets/advert-2.png";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const [balance, setBalance] = useState(160000);
-  const [userId] = useState(() => {
-    let id = localStorage.getItem("userId");
-    if (!id) {
-      id = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-      localStorage.setItem("userId", id);
-    }
-    return id;
-  });
+  const { profile, refreshProfile } = useAuth();
   const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Initialize balance and claim timer from localStorage
   useEffect(() => {
-    const savedBalance = localStorage.getItem("balance");
-    if (savedBalance) {
-      setBalance(parseInt(savedBalance));
-    } else {
-      localStorage.setItem("balance", "160000");
-    }
-
-    const savedClaimTime = localStorage.getItem("nextClaimAt");
-    if (savedClaimTime) {
-      const claimDate = new Date(savedClaimTime);
-      if (claimDate.getTime() > Date.now()) {
-        setNextClaimAt(claimDate);
-      } else {
-        localStorage.removeItem("nextClaimAt");
+    if (profile?.last_claim_at) {
+      const lastClaim = new Date(profile.last_claim_at);
+      const nextClaim = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
+      if (nextClaim.getTime() > Date.now()) {
+        setNextClaimAt(nextClaim);
       }
     }
-  }, []);
+  }, [profile]);
 
   // Claim timer effect
   useEffect(() => {
@@ -77,33 +62,55 @@ const Dashboard = () => {
     }
   }, [nextClaimAt]);
 
-  const handleClaim = () => {
+  const handleClaim = async () => {
+    if (!profile || isProcessing) return;
+    
     if (nextClaimAt) {
       toast.error(`Next claim in ${timeLeft}`);
       return;
     }
     
-    const newBalance = balance + 30000;
-    setBalance(newBalance);
-    localStorage.setItem("balance", newBalance.toString());
+    setIsProcessing(true);
     
-    // Save transaction to history
-    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-    transactions.unshift({
-      id: Date.now(),
-      type: "credit",
-      title: "Daily Claim Bonus",
-      date: new Date().toLocaleString(),
-      amount: "+₦30,000",
-    });
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-    
-    toast.success("Success — ₦30,000 added to your wallet!");
-    
-    const next = new Date();
-    next.setHours(next.getHours() + 24);
-    setNextClaimAt(next);
-    localStorage.setItem("nextClaimAt", next.toISOString());
+    try {
+      const newBalance = (profile.balance || 0) + 30000;
+      
+      // Update user balance and last claim time
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          balance: newBalance,
+          last_claim_at: new Date().toISOString()
+        })
+        .eq('user_id', profile.user_id);
+
+      if (updateError) throw updateError;
+
+      // Create transaction record
+      await supabase.from('transactions').insert({
+        user_id: profile.user_id,
+        title: 'Daily Claim Bonus',
+        amount: 30000,
+        type: 'credit',
+        transaction_id: `CLAIM${Date.now()}`,
+        balance_after: newBalance,
+      });
+
+      // Set next claim time
+      const next = new Date();
+      next.setHours(next.getHours() + 24);
+      setNextClaimAt(next);
+      
+      // Refresh profile to get updated balance
+      await refreshProfile();
+      
+      toast.success("Success — ₦30,000 added to your wallet!");
+    } catch (error: any) {
+      console.error('Error claiming bonus:', error);
+      toast.error(error.message || "Failed to claim bonus");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleWithdraw = () => {
@@ -122,6 +129,15 @@ const Dashboard = () => {
     { icon: History, label: "History", color: "bg-orange-600", route: "/history" },
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
   ];
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="text-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full relative">
@@ -159,10 +175,10 @@ const Dashboard = () => {
             <div className="space-y-3">
               <div className="space-y-1">
                 <div className="text-3xl font-bold text-primary-foreground">
-                  ₦{balance.toLocaleString()}
+                  ₦{profile?.balance?.toLocaleString() || '0'}
                 </div>
                 <div className="text-xs text-primary-foreground/60">
-                  ID: {userId}
+                  ID: {profile?.user_id || 'Loading...'}
                 </div>
               </div>
 
@@ -172,10 +188,10 @@ const Dashboard = () => {
                   variant="secondary"
                   size="sm"
                   className="flex-1 bg-white/20 hover:bg-white/30 text-white border-white/20 backdrop-blur-sm"
-                  disabled={!!nextClaimAt}
+                  disabled={!!nextClaimAt || !profile || isProcessing}
                 >
                   <Gift className="w-3 h-3 mr-1" />
-                  {nextClaimAt ? `Next claim in ${timeLeft}` : "Claim ₦30,000"}
+                  {isProcessing ? "Processing..." : nextClaimAt ? `Next claim in ${timeLeft}` : "Claim ₦30,000"}
                 </Button>
                 <Button
                   onClick={handleWithdraw}

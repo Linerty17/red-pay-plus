@@ -129,7 +129,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (profileError) return { error: profileError };
 
-      // If referred by someone, add bonus
+      // If referred by someone, process the referral
+      if (data.referredBy) {
+        // Get referrer's user_id from their referral code or user_id
+        const { data: referrer } = await supabase
+          .from('users')
+          .select('user_id, balance')
+          .or(`referral_code.eq.${data.referredBy},user_id.eq.${data.referredBy}`)
+          .single();
+
+        if (referrer) {
+          // Create referral record
+          await supabase.from('referrals').insert({
+            referrer_id: referrer.user_id,
+            new_user_id: userId,
+            amount_given: 5000,
+          });
+
+          // Update referrer's balance
+          const newBalance = (referrer.balance || 0) + 5000;
+          await supabase
+            .from('users')
+            .update({ balance: newBalance })
+            .eq('user_id', referrer.user_id);
+
+          // Create transaction record for referral bonus
+          await supabase.from('transactions').insert({
+            user_id: referrer.user_id,
+            title: 'Referral Bonus',
+            amount: 5000,
+            type: 'credit',
+            transaction_id: `REF${Date.now()}`,
+            balance_after: newBalance,
+          });
+        }
+      }
+
+      return { error: null };
       if (data.referredBy) {
         // Find referrer
         const { data: referrer } = await supabase

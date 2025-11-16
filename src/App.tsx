@@ -17,6 +17,7 @@ import Withdraw from "./pages/Withdraw";
 import Profile from "./pages/Profile";
 import SuccessPage from "./pages/SuccessPage";
 import ReferEarn from "./pages/ReferEarn";
+import Receipt from "./pages/Receipt";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/broadcast" element={<Broadcast />} />
             <Route path="/support" element={<Support />} />
             <Route path="/history" element={<History />} />
+            <Route path="/receipt/:id" element={<Receipt />} />
             <Route path="/buyrpc" element={<BuyRPC />} />
             <Route path="/payment-instructions" element={<PaymentInstructions />} />
             <Route path="/withdraw" element={<Withdraw />} />
