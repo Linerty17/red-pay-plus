@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
@@ -7,37 +6,19 @@ import ProfileButton from "@/components/ProfileButton";
 import { User, Mail, Phone, MapPin, Hash, Shield, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const Profile = () => {
-  const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    country: "",
-    userId: "",
-    status: "Active",
-    referralCode: "",
-  });
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    // Load profile data from localStorage
-    const name = localStorage.getItem("userName") || "John Doe";
-    const email = localStorage.getItem("userEmail") || "user@example.com";
-    const phone = localStorage.getItem("userPhone") || "+234 800 000 0000";
-    const country = localStorage.getItem("userCountry") || "Nigeria";
-    const userId = localStorage.getItem("userId") || "1234567890";
-    const referralCode = localStorage.getItem("referralCode") || "REF123456";
-
-    setProfileData({
-      name,
-      email,
-      phone,
-      country,
-      userId,
-      status: "Active",
-      referralCode,
-    });
-  }, []);
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="text-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -45,13 +26,13 @@ const Profile = () => {
   };
 
   const profileFields = [
-    { icon: User, label: "Full Name", value: profileData.name },
-    { icon: Mail, label: "Email", value: profileData.email },
-    { icon: Phone, label: "Phone Number", value: profileData.phone },
-    { icon: MapPin, label: "Country", value: profileData.country },
-    { icon: Hash, label: "User ID", value: profileData.userId, copyable: true },
-    { icon: Shield, label: "Status", value: profileData.status },
-    { icon: Copy, label: "Referral Code", value: profileData.referralCode, copyable: true },
+    { icon: User, label: "Full Name", value: `${profile.first_name} ${profile.last_name}` },
+    { icon: Mail, label: "Email", value: profile.email },
+    { icon: Phone, label: "Phone Number", value: profile.phone },
+    { icon: MapPin, label: "Country", value: profile.country },
+    { icon: Hash, label: "User ID", value: profile.user_id, copyable: true },
+    { icon: Shield, label: "Status", value: profile.status || "Active" },
+    { icon: Copy, label: "Referral Code", value: profile.referral_code, copyable: true },
   ];
 
   return (

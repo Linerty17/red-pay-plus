@@ -9,35 +9,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
-interface ProfileButtonProps {
-  user?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    country: string;
-    status: string;
-    refCode: string;
-  };
-}
-
-const ProfileButton = ({ user }: ProfileButtonProps) => {
+const ProfileButton = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const { profile } = useAuth();
 
-  const defaultUser = {
-    firstName: "John",
-    lastName: "Doe",
-    email: "john@redpay.com",
-    phone: "+234 800 000 0000",
-    country: "Nigeria",
-    status: "Individual",
-    refCode: "REDPAY2024",
-  };
+  if (!profile) {
+    return null;
+  }
 
-  const userData = user || defaultUser;
-  const initials = `${userData.firstName[0]}${userData.lastName[0]}`;
+  const initials = `${profile.first_name[0]}${profile.last_name[0]}`;
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -77,24 +61,24 @@ const ProfileButton = ({ user }: ProfileButtonProps) => {
             </Avatar>
             <div className="text-center">
               <h3 className="text-xl font-bold text-foreground">
-                {userData.firstName} {userData.lastName}
+                {profile.first_name} {profile.last_name}
               </h3>
-              <p className="text-sm text-muted-foreground">{userData.status}</p>
+              <p className="text-sm text-muted-foreground">{profile.status}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Email</label>
-              <p className="text-foreground">{userData.email}</p>
+              <p className="text-foreground">{profile.email}</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Phone</label>
-              <p className="text-foreground">{userData.phone}</p>
+              <p className="text-foreground">{profile.phone}</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Country</label>
-              <p className="text-foreground">{userData.country}</p>
+              <p className="text-foreground">{profile.country}</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">
@@ -102,9 +86,16 @@ const ProfileButton = ({ user }: ProfileButtonProps) => {
               </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 px-3 py-2 bg-secondary rounded-lg text-foreground font-mono text-sm">
-                  {userData.refCode}
+                  {profile.referral_code}
                 </code>
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(profile.referral_code);
+                    toast.success("Referral code copied!");
+                  }}
+                >
                   Copy
                 </Button>
               </div>

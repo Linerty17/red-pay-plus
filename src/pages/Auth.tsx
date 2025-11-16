@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +15,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { signUp, signIn, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+
+  useEffect(() => {
+    // Get referral code from URL
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferralCode(ref);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Redirect if already logged in
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,39 +48,47 @@ const Auth = () => {
     const lastName = formData.get("lastName") as string;
     const phone = formData.get("phone") as string;
     const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
     const country = formData.get("country") as string;
 
-    // Generate 10-digit user ID
-    const userId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-    const referralCode = `REF${Math.floor(100000 + Math.random() * 900000)}`;
+    const { error } = await signUp({
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      country,
+      referredBy: referralCode || undefined,
+    });
 
-    // Save user data to localStorage
-    localStorage.setItem("userName", `${firstName} ${lastName}`);
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userPhone", phone);
-    localStorage.setItem("userCountry", country);
-    localStorage.setItem("userId", userId);
-    localStorage.setItem("referralCode", referralCode);
-    localStorage.setItem("balance", "160000");
+    setIsLoading(false);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    if (error) {
+      toast.error(error.message || "Failed to create account");
+    } else {
       toast.success("Account created successfully!");
       navigate(`/welcome?firstName=${firstName}`);
-    }, 1500);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const { error } = await signIn(email, password);
+
+    setIsLoading(false);
+
+    if (error) {
+      toast.error(error.message || "Failed to sign in");
+    } else {
       toast.success("Welcome back!");
       navigate("/dashboard");
-    }, 1500);
+    }
   };
 
   return (
@@ -181,6 +208,8 @@ const Auth = () => {
                     <Input
                       id="refCode"
                       name="refCode"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value)}
                       placeholder="Enter code"
                       className="bg-input border-border"
                     />

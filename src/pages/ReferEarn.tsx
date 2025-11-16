@@ -6,17 +6,35 @@ import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import { Copy, Users, Gift, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const ReferEarn = () => {
-  const [referralCode, setReferralCode] = useState("");
-  const [referralLink, setReferralLink] = useState("");
+  const { profile } = useAuth();
+  const [referralCount, setReferralCount] = useState(0);
+  const [referralEarnings, setReferralEarnings] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const code = localStorage.getItem("referralCode") || "REF123456";
-    const link = `${window.location.origin}/?ref=${code}`;
-    setReferralCode(code);
-    setReferralLink(link);
-  }, []);
+    const fetchReferralData = async () => {
+      if (!profile) return;
+
+      // Get referral count
+      const { count, error: countError } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', profile.user_id);
+
+      if (!countError && count !== null) {
+        setReferralCount(count);
+        setReferralEarnings(count * 5000);
+      }
+
+      setLoading(false);
+    };
+
+    fetchReferralData();
+  }, [profile]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -24,16 +42,31 @@ const ReferEarn = () => {
   };
 
   const shareReferral = () => {
+    if (!profile) return;
+    
+    const referralLink = `${window.location.origin}/auth?ref=${profile.user_id}`;
+    
     if (navigator.share) {
       navigator.share({
         title: "Join RedPay",
-        text: `Use my referral code ${referralCode} to join RedPay and get amazing bonuses!`,
+        text: `Use my referral code ${profile.referral_code} to join RedPay and get ₦5,000 bonus!`,
         url: referralLink,
       });
     } else {
       copyToClipboard(referralLink, "Referral link");
     }
   };
+
+  if (!profile || loading) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="text-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  const referralLink = `${window.location.origin}/auth?ref=${profile.user_id}`;
 
   return (
     <div className="min-h-screen w-full relative">
@@ -50,6 +83,24 @@ const ReferEarn = () => {
           <p className="text-sm text-muted-foreground">Invite friends and earn rewards</p>
         </div>
 
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-sm border-border">
+            <CardContent className="p-4 text-center">
+              <Users className="w-8 h-8 text-primary mx-auto mb-2" />
+              <p className="text-2xl font-bold text-foreground">{referralCount}</p>
+              <p className="text-sm text-muted-foreground">Total Referrals</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/60 backdrop-blur-sm border-border">
+            <CardContent className="p-4 text-center">
+              <Gift className="w-8 h-8 text-success mx-auto mb-2" />
+              <p className="text-2xl font-bold text-success">₦{referralEarnings.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">Total Earnings</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Rewards Info */}
         <Card className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent backdrop-blur-sm border-primary/30 animate-fade-in">
           <CardContent className="p-6 text-center space-y-3">
@@ -57,7 +108,7 @@ const ReferEarn = () => {
               <Gift className="w-8 h-8 text-primary" />
             </div>
             <h2 className="text-xl font-bold text-foreground">Earn ₦5,000 Per Referral!</h2>
-            <p className="text-sm text-muted-foreground">Share your referral code and earn rewards when friends sign up</p>
+            <p className="text-sm text-muted-foreground">Share your referral link and earn rewards when friends sign up</p>
           </CardContent>
         </Card>
 
@@ -70,9 +121,9 @@ const ReferEarn = () => {
                 <span>Your Referral Code</span>
               </div>
               <div className="flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <span className="text-2xl font-bold text-primary font-mono">{referralCode}</span>
+                <span className="text-2xl font-bold text-primary font-mono">{profile.referral_code}</span>
                 <Button
-                  onClick={() => copyToClipboard(referralCode, "Referral code")}
+                  onClick={() => copyToClipboard(profile.referral_code, "Referral code")}
                   variant="outline"
                   size="sm"
                 >
