@@ -7,11 +7,11 @@ import { MessageCircle, Send } from "lucide-react";
 
 const Community = () => {
   const handleJoinWhatsApp = () => {
-    window.open("https://chat.whatsapp.com/your-group-link", "_blank");
+    window.open("https://chat.whatsapp.com/I5j03L8Yy78D7fHEbntFKU", "_blank");
   };
 
   const handleJoinTelegram = () => {
-    window.open("https://t.me/your-channel", "_blank");
+    window.open("https://t.me/Skypay261", "_blank");
   };
 
   return (
