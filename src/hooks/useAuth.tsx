@@ -148,21 +148,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Apply referral from localStorage or form code once
       if (referralSource) {
-        const { data: referrer } = await supabase
+        const { data: referrer, error: referrerError } = await supabase
           .from('users')
           .select('user_id, referral_code')
           .eq('referral_code', referralSource)
           .maybeSingle();
 
-        if (referrer?.user_id) {
+        if (referrerError) {
+          console.error('Error fetching referrer:', referrerError);
+        } else if (referrer?.user_id) {
           // Create referral record; DB trigger will handle credits/transactions
-          await supabase.from('referrals').insert({
+          const { error: referralError } = await supabase.from('referrals').insert({
             referrer_id: referrer.user_id,
             new_user_id: userId,
             amount_given: 5000,
           });
-          if (storedRefCode) localStorage.removeItem('referral_code');
+
+          if (referralError) {
+            console.error('Error applying referral:', referralError);
+            // Don't fail signup if referral fails - just log it
+          } else {
+            console.log('Referral applied successfully:', { referrer_id: referrer.user_id, new_user_id: userId });
+          }
+        } else {
+          console.warn('Invalid referral code:', referralSource);
         }
+        
+        // Always clear the stored referral code after attempting to apply it
+        if (storedRefCode) localStorage.removeItem('referral_code');
       }
 
       return { error: null };
