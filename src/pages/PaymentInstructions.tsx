@@ -21,7 +21,7 @@ const PaymentInstructions = () => {
   const amount = "6,700";
   const accountNumber = "1100711776";
   const bankName = "Kolomoni mfb";
-  const accountName = "sunday chinemerem MFB";
+  const accountName = "sunday chinemerem liberty";
   const referenceId = `REF${Date.now()}`;
 
   const copyToClipboard = (text: string, field: string) => {
