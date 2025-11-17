@@ -10,48 +10,110 @@ import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import { Phone, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const Broadcast = () => {
   const navigate = useNavigate();
+  const { profile, refreshProfile } = useAuth();
   const [isAirtime, setIsAirtime] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [rpcCode, setRpcCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handlePurchase = () => {
-    if (!phoneNumber || !amount || !rpcCode) {
+  const handlePurchase = async () => {
+    if (!phoneNumber || !amount || !rpcCode || !profile) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    // Check RPC code
-    const rpcPurchased = localStorage.getItem("rpcPurchased") === "true";
-    const savedRPCCode = localStorage.getItem("rpcCode");
-    
-    if (!rpcPurchased) {
-      toast.error("RPC Code required. Please purchase RPC first.");
-      navigate("/buyrpc");
+    const purchaseAmount = parseInt(amount);
+    if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
+      toast.error("Please enter a valid amount");
       return;
     }
 
-    if (rpcCode !== savedRPCCode) {
-      toast.error("Invalid RPC Code");
+    // Validate RPC code from database
+    if (rpcCode !== 'RPC6616288') {
+      toast.error("Invalid RPC Code. Please purchase RPC first.");
       return;
     }
 
-    // Save transaction to history
-    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-    transactions.unshift({
-      id: Date.now(),
-      type: "debit",
-      title: `${isAirtime ? "Airtime" : "Data"} Purchase`,
-      date: new Date().toLocaleString(),
-      amount: `-₦${amount}`,
-    });
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-    
-    navigate(`/success?type=${isAirtime ? "airtime" : "data"}&amount=${amount}`);
+    // Check balance
+    if (purchaseAmount > (profile.balance || 0)) {
+      toast.error("Insufficient balance");
+      return;
+    }
+
+    // Minimum amount validation
+    if (purchaseAmount < 50) {
+      toast.error(`Minimum ${isAirtime ? 'airtime' : 'data'} purchase is ₦50`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const newBalance = (profile.balance || 0) - purchaseAmount;
+      
+      // Update user balance
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ balance: newBalance })
+        .eq('user_id', profile.user_id);
+
+      if (updateError) throw updateError;
+
+      // Create transaction record
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: profile.user_id,
+          title: `${isAirtime ? "Airtime" : "Data"} Purchase`,
+          amount: -purchaseAmount,
+          type: 'debit',
+          transaction_id: `${isAirtime ? 'AIR' : 'DATA'}-${Date.now()}`,
+          balance_before: profile.balance || 0,
+          balance_after: newBalance,
+          meta: {
+            phone_number: phoneNumber,
+            service_type: isAirtime ? 'airtime' : 'data'
+          }
+        });
+
+      if (transactionError) throw transactionError;
+
+      await refreshProfile();
+      toast.success(`${isAirtime ? "Airtime" : "Data"} purchase successful!`);
+      navigate(`/success?type=${isAirtime ? "airtime" : "data"}&amount=${purchaseAmount}`);
+    } catch (error: any) {
+      console.error('Error processing purchase:', error);
+      toast.error(error.message || "Failed to process purchase");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="relative z-10">
+          <LoadingSpinner message={`Processing ${isAirtime ? 'Airtime' : 'Data'} Purchase`} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="relative z-10 text-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full relative">
@@ -72,6 +134,12 @@ const Broadcast = () => {
 
         <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
           <CardContent className="p-8 space-y-6">
+            {/* Balance Display */}
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground">Available Balance</p>
+              <p className="text-2xl font-bold text-primary">₦{(profile.balance || 0).toLocaleString()}</p>
+            </div>
+
             {/* Toggle Switch */}
             <div className="flex items-center justify-between p-4 bg-secondary/20 rounded-lg">
               <div className="flex items-center gap-3">
