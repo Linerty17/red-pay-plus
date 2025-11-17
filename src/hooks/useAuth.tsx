@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface UserProfile {
   id: string;
   user_id: string;
+  auth_user_id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -17,6 +18,8 @@ interface UserProfile {
   last_claim_at: string | null;
   rpc_purchased: boolean;
   rpc_code: string | null;
+  profile_image: string | null;
+  referral_count: number;
   created_at: string;
 }
 

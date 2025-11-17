@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
@@ -68,7 +68,7 @@ const Dashboard = () => {
     }
   }, [nextClaimAt]);
 
-  const handleClaim = async () => {
+  const handleClaim = useCallback(async () => {
     if (!profile || isProcessing) return;
     
     if (nextClaimAt) {
@@ -98,58 +98,56 @@ const Dashboard = () => {
         title: 'Daily Claim Bonus',
         amount: 30000,
         type: 'credit',
-        transaction_id: `CLAIM${Date.now()}`,
+        transaction_id: `CLAIM-${Date.now()}`,
+        balance_before: profile.balance || 0,
         balance_after: newBalance,
+        meta: {}
       });
 
-      // Set next claim time
-      const next = new Date();
-      next.setHours(next.getHours() + 24);
+      // Set next claim time (15 minutes from now)
+      const next = new Date(Date.now() + 15 * 60 * 1000);
       setNextClaimAt(next);
       
-      // Refresh profile to get updated balance
       await refreshProfile();
-      
-      toast.success("Success — ₦30,000 added to your wallet!");
+      toast.success("₦30,000 claimed successfully!");
     } catch (error: any) {
       console.error('Error claiming bonus:', error);
       toast.error(error.message || "Failed to claim bonus");
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [profile, isProcessing, nextClaimAt, timeLeft, refreshProfile]);
 
-  const handleWithdraw = () => {
+  const handleWithdraw = useCallback(() => {
     navigate("/withdraw");
-  };
+  }, [navigate]);
 
-  const handleAction = (action: string) => {
+  const handleAction = useCallback((action: string) => {
     if (action === "Video") {
-      // Check for video link from settings
       setVideoOpen(true);
     } else {
       toast.info(`${action} feature coming soon!`);
     }
-  };
+  }, []);
 
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     setLoadError(false);
     await refreshProfile();
-  };
+  }, [refreshProfile]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOut();
     navigate("/");
-  };
+  }, [signOut, navigate]);
 
-  const actionButtons = [
+  const actionButtons = useMemo(() => [
     { icon: ShoppingBag, label: "BuyRPC", color: "bg-primary", route: "/buyrpc" },
     { icon: Radio, label: "Broadcast", color: "bg-purple-600", route: "/broadcast" },
     { icon: Gift, label: "Refer&Earn", color: "bg-blue-600", route: "/refer-earn" },
     { icon: Users, label: "Community", color: "bg-green-600", route: "/community" },
     { icon: HistoryIcon, label: "History", color: "bg-orange-600", route: "/history" },
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
-  ];
+  ], []);
 
   // Loading skeleton while profile loads
   if (!profile && !loadError) {
