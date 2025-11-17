@@ -44,6 +44,33 @@ const Dashboard = () => {
     }
   }, [profile]);
 
+  // Realtime subscription for balance and referral count updates
+  useEffect(() => {
+    if (!profile?.user_id) return;
+
+    const channel = supabase
+      .channel('user-balance-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `user_id=eq.${profile.user_id}`
+        },
+        (payload) => {
+          console.log('Realtime update received:', payload);
+          // Refresh profile to get updated balance and referral_count
+          refreshProfile();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.user_id, refreshProfile]);
+
   // Claim timer effect
   useEffect(() => {
     if (nextClaimAt) {
