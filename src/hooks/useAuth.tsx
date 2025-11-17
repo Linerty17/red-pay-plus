@@ -166,42 +166,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
-      if (data.referredBy) {
-        // Find referrer
-        const { data: referrer } = await supabase
-          .from('users')
-          .select('*')
-          .eq('user_id', data.referredBy)
-          .single();
-
-        if (referrer) {
-          // Add ₦5,000 to referrer's balance
-          await supabase
-            .from('users')
-            .update({ balance: referrer.balance + 5000 })
-            .eq('user_id', data.referredBy);
-
-          // Create referral record
-          await supabase.from('referrals').insert({
-            referrer_id: data.referredBy,
-            new_user_id: userId,
-            amount_given: 5000,
-          });
-
-          // Add transaction for referrer
-          await supabase.from('transactions').insert({
-            transaction_id: `TXN${Date.now()}`,
-            user_id: data.referredBy,
-            type: 'credit',
-            title: 'Referral Bonus',
-            amount: 5000,
-            balance_after: referrer.balance + 5000,
-            reference_id: `REF${Date.now()}`,
-          });
-        }
-      }
-
-      return { error: null };
     } catch (error) {
       return { error };
     }
