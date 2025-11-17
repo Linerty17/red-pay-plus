@@ -131,9 +131,11 @@ export type Database = {
         Row: {
           amount: number
           balance_after: number
+          balance_before: number
           created_at: string | null
           date: string | null
           id: string
+          meta: Json
           proof_image: string | null
           reference_id: string | null
           title: string
@@ -144,9 +146,11 @@ export type Database = {
         Insert: {
           amount: number
           balance_after: number
+          balance_before?: number
           created_at?: string | null
           date?: string | null
           id?: string
+          meta?: Json
           proof_image?: string | null
           reference_id?: string | null
           title: string
@@ -157,9 +161,11 @@ export type Database = {
         Update: {
           amount?: number
           balance_after?: number
+          balance_before?: number
           created_at?: string | null
           date?: string | null
           id?: string
+          meta?: Json
           proof_image?: string | null
           reference_id?: string | null
           title?: string
@@ -177,6 +183,24 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string | null
@@ -190,6 +214,7 @@ export type Database = {
           last_name: string
           phone: string
           referral_code: string
+          referral_count: number
           referred_by: string | null
           rpc_code: string | null
           rpc_purchased: boolean | null
@@ -208,6 +233,7 @@ export type Database = {
           last_name: string
           phone: string
           referral_code: string
+          referral_count?: number
           referred_by?: string | null
           rpc_code?: string | null
           rpc_purchased?: boolean | null
@@ -226,6 +252,7 @@ export type Database = {
           last_name?: string
           phone?: string
           referral_code?: string
+          referral_count?: number
           referred_by?: string | null
           rpc_code?: string | null
           rpc_purchased?: boolean | null
@@ -239,10 +266,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -369,6 +402,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
