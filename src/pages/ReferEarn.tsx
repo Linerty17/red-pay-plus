@@ -43,9 +43,7 @@ const ReferEarn = () => {
 
   const shareReferral = () => {
     if (!profile) return;
-    
-    const referralLink = `${window.location.origin}/auth?ref=${profile.user_id}`;
-    
+    const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
     if (navigator.share) {
       navigator.share({
         title: "Join RedPay",
@@ -66,7 +64,7 @@ const ReferEarn = () => {
     );
   }
 
-  const referralLink = `${window.location.origin}/auth?ref=${profile.user_id}`;
+  const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
 
   return (
     <div className="min-h-screen w-full relative">
@@ -104,11 +102,16 @@ const ReferEarn = () => {
         {/* Rewards Info */}
         <Card className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent backdrop-blur-sm border-primary/30 animate-fade-in">
           <CardContent className="p-6 text-center space-y-3">
-            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-              <Gift className="w-8 h-8 text-primary" />
+            <p className="text-sm text-muted-foreground">Share your link and earn ₦5,000 per referral</p>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <span className="text-muted-foreground">Your referral link:</span>
+              <button
+                onClick={() => copyToClipboard(referralLink, "Referral link")}
+                className="text-primary underline"
+              >
+                {referralLink}
+              </button>
             </div>
-            <h2 className="text-xl font-bold text-foreground">Earn ₦5,000 Per Referral!</h2>
-            <p className="text-sm text-muted-foreground">Share your referral link and earn rewards when friends sign up</p>
           </CardContent>
         </Card>
 
