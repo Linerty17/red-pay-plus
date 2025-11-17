@@ -124,6 +124,7 @@ const Dashboard = () => {
 
   const handleAction = useCallback((action: string) => {
     if (action === "Video") {
+      setVideoLink("https://www.youtube.com/embed/HIIsekQx_dU");
       setVideoOpen(true);
     } else {
       toast.info(`${action} feature coming soon!`);
