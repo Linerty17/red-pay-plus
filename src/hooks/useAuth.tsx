@@ -24,12 +24,10 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  error: Error | null;
   signUp: (data: SignUpData) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  retryFetch: () => Promise<void>;
 }
 
 interface SignUpData {
@@ -48,37 +46,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    try {
-      console.log('[Auth] Fetching profile for user:', userId);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_user_id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('auth_user_id', userId)
+      .single();
 
-      if (error) {
-        console.error('[Auth] Error fetching profile:', error);
-        setError(new Error(`Failed to fetch profile: ${error.message}`));
-        return null;
-      }
-      
-      if (!data) {
-        console.error('[Auth] No profile data found for user:', userId);
-        setError(new Error('Profile not found. Please contact support.'));
-        return null;
-      }
-      
-      console.log('[Auth] Profile fetched successfully:', data);
-      setError(null);
-      return data;
-    } catch (err) {
-      console.error('[Auth] Unexpected error fetching profile:', err);
-      setError(err instanceof Error ? err : new Error('Unknown error fetching profile'));
+    if (error) {
+      console.error('Error fetching profile:', error);
       return null;
     }
+    return data;
   };
 
   const refreshProfile = async () => {
@@ -88,31 +68,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const retryFetch = async () => {
-    console.log('[Auth] Retrying profile fetch...');
-    setLoading(true);
-    setError(null);
-    if (user) {
-      const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[Auth] Session check:', session ? 'Active' : 'None');
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
-      } else {
-        setError(null);
       }
-      setLoading(false);
-    }).catch((err) => {
-      console.error('[Auth] Error getting session:', err);
-      setError(new Error('Failed to check authentication status'));
       setLoading(false);
     });
 
@@ -120,14 +82,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[Auth] Auth state changed:', _event);
       setUser(session?.user ?? null);
       if (session?.user) {
         const profileData = await fetchProfile(session.user.id);
         setProfile(profileData);
       } else {
         setProfile(null);
-        setError(null);
       }
       setLoading(false);
     });
@@ -206,6 +166,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { error: null };
+      if (data.referredBy) {
+        // Find referrer
+        const { data: referrer } = await supabase
+          .from('users')
+          .select('*')
+          .eq('user_id', data.referredBy)
+          .single();
+
+        if (referrer) {
+          // Add ₦5,000 to referrer's balance
+          await supabase
+            .from('users')
+            .update({ balance: referrer.balance + 5000 })
+            .eq('user_id', data.referredBy);
+
+          // Create referral record
+          await supabase.from('referrals').insert({
+            referrer_id: data.referredBy,
+            new_user_id: userId,
+            amount_given: 5000,
+          });
+
+          // Add transaction for referrer
+          await supabase.from('transactions').insert({
+            transaction_id: `TXN${Date.now()}`,
+            user_id: data.referredBy,
+            type: 'credit',
+            title: 'Referral Bonus',
+            amount: 5000,
+            balance_after: referrer.balance + 5000,
+            reference_id: `REF${Date.now()}`,
+          });
+        }
+      }
+
+      return { error: null };
     } catch (error) {
       return { error };
     }
@@ -225,7 +221,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, error, signUp, signIn, signOut, refreshProfile, retryFetch }}
+      value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

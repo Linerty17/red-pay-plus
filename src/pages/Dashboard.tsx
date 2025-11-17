@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
-  const { profile, refreshProfile, loading, error, retryFetch } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -130,14 +130,14 @@ const Dashboard = () => {
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
   ];
 
-  const handleRetry = async () => {
-    await retryFetch();
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/auth";
-  };
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="text-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full relative">
@@ -151,47 +151,6 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto space-y-3">
-        {/* Loading State */}
-        {loading && (
-          <Card className="bg-card/60 backdrop-blur-sm border-border">
-            <CardContent className="pt-6 pb-6 px-4 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Error State */}
-        {error && !loading && (
-          <Card className="bg-card/60 backdrop-blur-sm border-destructive">
-            <CardContent className="pt-6 pb-6 px-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-destructive/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-foreground">Unable to load dashboard</h3>
-                  <p className="text-sm text-muted-foreground">{error.message}</p>
-                  <p className="text-xs text-muted-foreground/60">Check console for details</p>
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleRetry} variant="default" size="sm" className="flex-1">
-                  Retry
-                </Button>
-                <Button onClick={handleLogout} variant="outline" size="sm" className="flex-1">
-                  Logout
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Dashboard Content */}
-        {!loading && !error && profile && (
-          <>
         {/* Video Button - Above Balance */}
         <div className="flex justify-end">
           <Button
@@ -281,8 +240,6 @@ const Dashboard = () => {
             <img src={advert2} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
           </CardContent>
         </Card>
-        </>
-        )}
       </main>
     </div>
   );
