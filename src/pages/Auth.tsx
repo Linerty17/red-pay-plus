@@ -25,15 +25,10 @@ const Auth = () => {
   const [referralCode, setReferralCode] = useState("");
 
   useEffect(() => {
-    // Get referral code from localStorage (captured by splash) or URL
-    const storedRef = localStorage.getItem("referral_code");
-    const urlRef = searchParams.get("ref");
-    
-    if (storedRef) {
-      setReferralCode(storedRef);
-    } else if (urlRef) {
-      setReferralCode(urlRef);
-      localStorage.setItem("referral_code", urlRef);
+    // Get referral code from URL
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferralCode(ref);
     }
   }, [searchParams]);
 
@@ -208,31 +203,20 @@ const Auth = () => {
                     </Select>
                   </div>
 
-                  {referralCode ? (
-                    <div className="space-y-2">
-                      <Label>Referral Applied</Label>
-                      <div className="flex items-center gap-2 p-3 rounded-md bg-primary/10 border border-primary/20">
-                        <span className="text-sm font-medium text-primary">
-                          Referral code: {referralCode}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label htmlFor="refCode">Referral Code (Optional)</Label>
-                      <Input
-                        id="refCode"
-                        name="refCode"
-                        value={referralCode}
-                        onChange={(e) => setReferralCode(e.target.value)}
-                        placeholder="Enter code"
-                        className="bg-input border-border"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Have a referral code? Add it to earn rewards.
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="refCode">Referral Code (Optional)</Label>
+                    <Input
+                      id="refCode"
+                      name="refCode"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value)}
+                      placeholder="Enter code"
+                      className="bg-input border-border"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Have a referral code? Add it to earn rewards.
+                    </p>
+                  </div>
 
                   <Button
                     type="submit"
