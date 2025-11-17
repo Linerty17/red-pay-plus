@@ -16,6 +16,7 @@ const PaymentInstructions = () => {
   const [copied, setCopied] = useState<string>("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showFailure, setShowFailure] = useState(false);
 
   const amount = "6,700";
   const accountNumber = "0108835271";
@@ -46,18 +47,68 @@ const PaymentInstructions = () => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 2000));
     setLoading(false);
-    
-    toast.success("Payment proof uploaded successfully!");
-    toast.info("Your payment is being verified. You'll receive your RPC code via email within 24 hours.");
-    
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 2000);
+    setShowFailure(true);
   };
 
-  const handleCopyRPCAndContinue = () => {
+  const handleContactSupport = () => {
+    navigate("/support");
+  };
+
+  const handleGoToDashboard = () => {
     navigate("/dashboard");
   };
+
+  if (showFailure) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center">
+                <span className="text-destructive-foreground text-4xl font-light">✕</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-destructive">Transaction verification failed!</h2>
+              <p className="text-sm text-muted-foreground">
+                Your payment could not be completed. Reason: No Payment received from you/invalid payment method. 
+                If you have made the payment kindly send payment proof to our support team below
+              </p>
+            </div>
+
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center justify-between">
+              <span className="text-sm text-foreground">Invalid Payment</span>
+              <div className="w-6 h-6 rounded-full border-2 border-destructive flex items-center justify-center">
+                <span className="text-destructive text-lg font-light">✕</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={handleGoToDashboard}
+                variant="outline"
+                className="w-full" 
+                size="lg"
+              >
+                Go to Dashboard
+              </Button>
+              
+              <Button 
+                onClick={handleContactSupport}
+                className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white" 
+                size="lg"
+              >
+                <span className="mr-2">✈</span>
+                Contact Support
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
