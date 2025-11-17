@@ -8,6 +8,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import PaymentNoticeDialog from "@/components/PaymentNoticeDialog";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ const BuyRPC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showNoticeDialog, setShowNoticeDialog] = useState(false);
 
   const navigate = useNavigate();
   const [userId] = useState(localStorage.getItem("userId") || "1234567890");
@@ -53,7 +55,12 @@ const BuyRPC = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     setLoading(false);
     
-    // Navigate to payment instructions
+    // Show payment notice dialog
+    setShowNoticeDialog(true);
+  };
+
+  const handleConfirmNotice = () => {
+    setShowNoticeDialog(false);
     navigate("/payment-instructions");
   };
 
@@ -159,6 +166,12 @@ const BuyRPC = () => {
           </CardContent>
         </Card>
       </main>
+
+      <PaymentNoticeDialog
+        open={showNoticeDialog}
+        onOpenChange={setShowNoticeDialog}
+        onConfirm={handleConfirmNotice}
+      />
     </div>
   );
 };
