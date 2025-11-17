@@ -7,15 +7,15 @@ import { MessageCircle, Send, Mail, MessagesSquare } from "lucide-react";
 
 const Support = () => {
   const handleTelegramSupport = () => {
-    window.open("https://t.me/redpay-support", "_blank");
+    window.open("https://t.me/Redpaysupport", "_blank");
   };
 
   const handleWhatsAppSupport = () => {
-    window.open("https://wa.me/your-support-number", "_blank");
+    window.open("https://wa.me/2349127560865", "_blank");
   };
 
   const handleEmailSupport = () => {
-    window.location.href = "mailto:support@redpay.com";
+    window.location.href = "mailto:redpaycustomerservice@gmail.com";
   };
 
   const handleLiveChat = () => {
