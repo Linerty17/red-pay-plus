@@ -127,6 +127,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (authError) return { error: authError };
       if (!authData.user) return { error: new Error('No user returned') };
 
+      const storedRefCode = localStorage.getItem('referral_code');
+      const referralSource = storedRefCode || data.referredBy || null;
+
       // Create user profile
       const { error: profileError } = await supabase.from('users').insert({
         auth_user_id: authData.user.id,
@@ -137,45 +140,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         phone: data.phone,
         country: data.country,
         referral_code: referralCode,
-        referred_by: data.referredBy || null,
+        referred_by: referralSource,
         balance: 160000,
       });
 
       if (profileError) return { error: profileError };
 
-      // If referred by someone, process the referral
-      if (data.referredBy) {
-        // Get referrer's user_id from their referral code or user_id
+      // Apply referral from localStorage or form code once
+      if (referralSource) {
         const { data: referrer } = await supabase
           .from('users')
-          .select('user_id, balance')
-          .or(`referral_code.eq.${data.referredBy},user_id.eq.${data.referredBy}`)
-          .single();
+          .select('user_id, referral_code')
+          .eq('referral_code', referralSource)
+          .maybeSingle();
 
-        if (referrer) {
-          // Create referral record
+        if (referrer?.user_id) {
+          // Create referral record; DB trigger will handle credits/transactions
           await supabase.from('referrals').insert({
             referrer_id: referrer.user_id,
             new_user_id: userId,
             amount_given: 5000,
           });
-
-          // Update referrer's balance
-          const newBalance = (referrer.balance || 0) + 5000;
-          await supabase
-            .from('users')
-            .update({ balance: newBalance })
-            .eq('user_id', referrer.user_id);
-
-          // Create transaction record for referral bonus
-          await supabase.from('transactions').insert({
-            user_id: referrer.user_id,
-            title: 'Referral Bonus',
-            amount: 5000,
-            type: 'credit',
-            transaction_id: `REF${Date.now()}`,
-            balance_after: newBalance,
-          });
+          if (storedRefCode) localStorage.removeItem('referral_code');
         }
       }
 
