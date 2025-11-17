@@ -11,9 +11,12 @@ import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { DollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Withdraw = () => {
   const navigate = useNavigate();
+  const { profile, refreshProfile } = useAuth();
   const [formData, setFormData] = useState({
     accountNumber: "",
     accountName: "",
@@ -22,13 +25,6 @@ const Withdraw = () => {
     rpcCode: "",
   });
   const [loading, setLoading] = useState(false);
-  const [userId] = useState(localStorage.getItem("userId") || "1234567890");
-  const [currentBalance, setCurrentBalance] = useState(0);
-
-  useEffect(() => {
-    const balance = parseInt(localStorage.getItem("balance") || "160000");
-    setCurrentBalance(balance);
-  }, []);
 
   const banks = [
     "Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank",
@@ -37,29 +33,25 @@ const Withdraw = () => {
   ];
 
   const handleWithdraw = async () => {
-    // Validation
-    if (!formData.accountNumber || !formData.accountName || !formData.bank || !formData.amount || !formData.rpcCode) {
+    if (!formData.accountNumber || !formData.accountName || !formData.bank || !formData.amount || !formData.rpcCode || !profile) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    // Check RPC code
-    const rpcPurchased = localStorage.getItem("rpcPurchased") === "true";
-    const savedRPCCode = localStorage.getItem("rpcCode");
-    
-    if (!rpcPurchased) {
-      toast.error("RPC Code required. Please purchase RPC first.");
-      navigate("/buyrpc");
-      return;
-    }
-
-    if (formData.rpcCode !== savedRPCCode) {
-      toast.error("Invalid RPC Code");
+    // Validate RPC code
+    if (formData.rpcCode !== 'RPC6616288') {
+      toast.error("Invalid RPC Code. Please purchase RPC first.");
       return;
     }
 
     const withdrawAmount = parseInt(formData.amount);
-    if (withdrawAmount > currentBalance) {
+    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    // Check balance
+    if (withdrawAmount > (profile.balance || 0)) {
       toast.error("Insufficient balance");
       return;
     }
@@ -70,26 +62,46 @@ const Withdraw = () => {
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Deduct from balance
-    const newBalance = currentBalance - withdrawAmount;
-    localStorage.setItem("balance", newBalance.toString());
-    
-    setLoading(false);
-    
-    // Save transaction to history
-    const transactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-    transactions.unshift({
-      id: Date.now(),
-      type: "debit",
-      title: "Withdrawal",
-      date: new Date().toLocaleString(),
-      amount: `-₦${withdrawAmount.toLocaleString()}`,
-    });
-    localStorage.setItem("transactions", JSON.stringify(transactions));
-    
-    navigate(`/success?type=withdraw&amount=${withdrawAmount.toLocaleString()}`);
+    try {
+      const newBalance = (profile.balance || 0) - withdrawAmount;
+      
+      // Update user balance
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ balance: newBalance })
+        .eq('user_id', profile.user_id);
+
+      if (updateError) throw updateError;
+
+      // Create transaction record
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: profile.user_id,
+          title: 'Withdrawal',
+          amount: -withdrawAmount,
+          type: 'debit',
+          transaction_id: `WD-${Date.now()}`,
+          balance_before: profile.balance || 0,
+          balance_after: newBalance,
+          meta: {
+            account_number: formData.accountNumber,
+            account_name: formData.accountName,
+            bank: formData.bank
+          }
+        });
+
+      if (transactionError) throw transactionError;
+
+      await refreshProfile();
+      toast.success("Withdrawal processed successfully!");
+      navigate(`/success?type=withdraw&amount=${withdrawAmount.toLocaleString()}`);
+    } catch (error: any) {
+      console.error('Error processing withdrawal:', error);
+      toast.error(error.message || "Failed to process withdrawal");
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -100,6 +112,15 @@ const Withdraw = () => {
         <div className="relative z-10">
           <LoadingSpinner message="Processing Withdrawal" />
         </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="relative z-10 text-foreground">Loading...</div>
       </div>
     );
   }
@@ -124,7 +145,7 @@ const Withdraw = () => {
             {/* Balance Display */}
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Available Balance</p>
-              <p className="text-2xl font-bold text-primary">₦{currentBalance.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-primary">₦{(profile?.balance || 0).toLocaleString()}</p>
             </div>
 
             <div className="space-y-3">
@@ -133,7 +154,7 @@ const Withdraw = () => {
                 <Label htmlFor="userId" className="text-xs">User ID</Label>
                 <Input
                   id="userId"
-                  value={userId}
+                  value={profile?.user_id || ''}
                   disabled
                   className="h-9 bg-secondary/20"
                 />
