@@ -19,9 +19,9 @@ const PaymentInstructions = () => {
   const [showFailure, setShowFailure] = useState(false);
 
   const amount = "6,700";
-  const accountNumber = "1066994665";
-  const bankName = "Paga Bank";
-  const accountName = "STW RedPay V6";
+  const accountNumber = "1100711776";
+  const bankName = "Kolomoni mfb";
+  const accountName = "sunday chinemerem MFB";
   const referenceId = `REF${Date.now()}`;
 
   const copyToClipboard = (text: string, field: string) => {
