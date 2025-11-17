@@ -16,8 +16,6 @@ const PaymentInstructions = () => {
   const [copied, setCopied] = useState<string>("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showRPCCode, setShowRPCCode] = useState(false);
-  const [rpcCode] = useState("RPC284454");
 
   const amount = "6,700";
   const accountNumber = "0108835271";
@@ -47,50 +45,19 @@ const PaymentInstructions = () => {
 
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Save RPC purchase status
-    localStorage.setItem("rpcPurchased", "true");
-    localStorage.setItem("rpcCode", rpcCode);
-    
     setLoading(false);
-    setShowRPCCode(true);
+    
+    toast.success("Payment proof uploaded successfully!");
+    toast.info("Your payment is being verified. You'll receive your RPC code via email within 24 hours.");
+    
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 2000);
   };
 
   const handleCopyRPCAndContinue = () => {
-    copyToClipboard(rpcCode, "RPC Code");
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 1500);
+    navigate("/dashboard");
   };
-
-  if (showRPCCode) {
-    return (
-      <div className="min-h-screen w-full relative flex items-center justify-center">
-        <LiquidBackground />
-        <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-              <Check className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">Payment Confirmed!</h2>
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 space-y-3">
-              <p className="text-sm text-muted-foreground">Your RPC Code</p>
-              <p className="text-3xl font-bold text-primary font-mono">{rpcCode}</p>
-              <p className="text-xs text-destructive">⚠️ Save this code - it will only be shown once!</p>
-            </div>
-            <Button 
-              onClick={handleCopyRPCAndContinue} 
-              className="w-full" 
-              size="lg"
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Code & Continue
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -199,19 +166,28 @@ const PaymentInstructions = () => {
 
             {/* Screenshot Upload */}
             <div className="space-y-2">
-              <Label htmlFor="screenshot" className="text-xs">Upload Payment Screenshot</Label>
+              <Label htmlFor="screenshot" className="text-sm font-medium text-foreground">Upload Payment Screenshot</Label>
               <div className="relative">
-                <Input
-                  id="screenshot"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="h-11 cursor-pointer"
-                />
-                <Upload className="absolute right-3 top-3 w-5 h-5 text-muted-foreground pointer-events-none" />
+                <div className="border-2 border-dashed border-primary/30 rounded-lg p-6 bg-primary/5 hover:bg-primary/10 transition-colors">
+                  <Input
+                    id="screenshot"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center gap-2 text-center pointer-events-none">
+                    <Upload className="w-8 h-8 text-primary" />
+                    <p className="text-sm font-medium text-foreground">Click to upload payment proof</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                  </div>
+                </div>
               </div>
               {screenshot && (
-                <p className="text-xs text-primary">✓ {screenshot.name}</p>
+                <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <Check className="w-4 h-4 text-primary" />
+                  <p className="text-sm text-primary font-medium">{screenshot.name}</p>
+                </div>
               )}
             </div>
 
