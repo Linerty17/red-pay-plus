@@ -17,7 +17,7 @@ const PaymentInstructions = () => {
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRPCCode, setShowRPCCode] = useState(false);
-  const [rpcCode] = useState("RPC2007");
+  const [rpcCode] = useState("RPC6616288");
 
   const amount = "6,700";
   const accountNumber = "5569742889";
