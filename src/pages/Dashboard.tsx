@@ -120,11 +120,26 @@ const Dashboard = () => {
   };
 
   const handleWithdraw = () => {
-    window.location.href = "/withdraw";
+    navigate("/withdraw");
   };
 
   const handleAction = (action: string) => {
-    toast.info(`${action} feature coming soon!`);
+    if (action === "Video") {
+      // Check for video link from settings
+      setVideoOpen(true);
+    } else {
+      toast.info(`${action} feature coming soon!`);
+    }
+  };
+
+  const handleRetry = async () => {
+    setLoadError(false);
+    await refreshProfile();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
   };
 
   const actionButtons = [
@@ -132,15 +147,67 @@ const Dashboard = () => {
     { icon: Radio, label: "Broadcast", color: "bg-purple-600", route: "/broadcast" },
     { icon: Gift, label: "Refer&Earn", color: "bg-blue-600", route: "/refer-earn" },
     { icon: Users, label: "Community", color: "bg-green-600", route: "/community" },
-    { icon: History, label: "History", color: "bg-orange-600", route: "/history" },
+    { icon: HistoryIcon, label: "History", color: "bg-orange-600", route: "/history" },
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
   ];
 
-  if (!profile) {
+  // Loading skeleton while profile loads
+  if (!profile && !loadError) {
     return (
-      <div className="min-h-screen w-full relative flex items-center justify-center">
+      <div className="min-h-screen w-full relative">
         <LiquidBackground />
-        <div className="text-foreground">Loading...</div>
+        <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
+          <Logo />
+          <ProfileButton />
+        </header>
+        <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto space-y-3">
+          <Skeleton className="h-8 w-24 ml-auto" />
+          <Card className="bg-card/60 backdrop-blur-sm border-border">
+            <CardContent className="pt-4 pb-4 px-4 space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-10 w-48" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 flex-1" />
+              </div>
+            </CardContent>
+          </Card>
+          <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Error fallback with retry
+  if (loadError || !profile) {
+    return (
+      <div className="min-h-screen w-full relative">
+        <LiquidBackground />
+        <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
+          <Logo />
+          <ProfileButton />
+        </header>
+        <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto flex items-center justify-center min-h-[60vh]">
+          <Card className="bg-card/80 backdrop-blur-sm border-border max-w-md">
+            <CardContent className="p-8 text-center space-y-4">
+              <h2 className="text-xl font-bold text-foreground">Dashboard failed to load</h2>
+              <p className="text-muted-foreground">Unable to fetch your profile data</p>
+              <div className="flex gap-2">
+                <Button onClick={handleRetry} className="flex-1">
+                  Retry
+                </Button>
+                <Button onClick={handleLogout} variant="outline" className="flex-1">
+                  Logout
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -222,22 +289,25 @@ const Dashboard = () => {
 
         {/* Action Buttons Grid - 3x2 */}
         <div className="grid grid-cols-3 gap-2 animate-fade-in">
-          {actionButtons.map((button, index) => (
-            <Link
-              key={index}
-              to={button.route}
-              className="block"
-            >
-              <Card className="bg-card/60 backdrop-blur-sm border-border hover-lift cursor-pointer transition-all h-full">
-                <CardContent className="p-3 flex flex-col items-center justify-center space-y-1 text-center">
-                  <div className={`w-10 h-10 ${button.color} rounded-xl flex items-center justify-center`}>
-                    <button.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-xs text-foreground">{button.label}</h3>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {actionButtons.map((button, index) => {
+            const IconComponent = button.icon;
+            return (
+              <Link
+                key={index}
+                to={button.route}
+                className="block"
+              >
+                <Card className="bg-card/60 backdrop-blur-sm border-border hover-lift cursor-pointer transition-all h-full">
+                  <CardContent className="p-3 flex flex-col items-center justify-center space-y-1 text-center">
+                    <div className={`w-10 h-10 ${button.color} rounded-xl flex items-center justify-center`}>
+                      <IconComponent className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-xs text-foreground">{button.label}</h3>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Advert 2 */}
@@ -247,6 +317,29 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Video Modal */}
+      <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Video</DialogTitle>
+          </DialogHeader>
+          {videoLink ? (
+            <div className="aspect-video">
+              <iframe
+                src={videoLink}
+                className="w-full h-full rounded-lg"
+                allowFullScreen
+                title="RedPay Video"
+              />
+            </div>
+          ) : (
+            <div className="aspect-video bg-secondary/20 rounded-lg flex items-center justify-center">
+              <p className="text-muted-foreground">No video available yet</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
