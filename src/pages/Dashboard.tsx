@@ -37,7 +37,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (profile?.last_claim_at) {
       const lastClaim = new Date(profile.last_claim_at);
-      const nextClaim = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
+      const nextClaim = new Date(lastClaim.getTime() + 15 * 60 * 1000); // 15 minutes
       if (nextClaim.getTime() > Date.now()) {
         setNextClaimAt(nextClaim);
       }

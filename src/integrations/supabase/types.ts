@@ -213,6 +213,7 @@ export type Database = {
           last_claim_at: string | null
           last_name: string
           phone: string
+          profile_image: string | null
           referral_code: string
           referral_count: number
           referred_by: string | null
@@ -232,6 +233,7 @@ export type Database = {
           last_claim_at?: string | null
           last_name: string
           phone: string
+          profile_image?: string | null
           referral_code: string
           referral_count?: number
           referred_by?: string | null
@@ -251,6 +253,7 @@ export type Database = {
           last_claim_at?: string | null
           last_name?: string
           phone?: string
+          profile_image?: string | null
           referral_code?: string
           referral_count?: number
           referred_by?: string | null
