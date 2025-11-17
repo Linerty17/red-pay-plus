@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from('users')
       .select('*')
       .eq('auth_user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching profile:', error);
@@ -72,6 +72,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      // Store access token for external API calls if needed
+      if (session?.access_token) {
+        localStorage.setItem('authToken', session.access_token);
+      } else {
+        localStorage.removeItem('authToken');
+      }
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
       }
@@ -81,11 +87,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
+      // Maintain token for external requests
+      if (session?.access_token) {
+        localStorage.setItem('authToken', session.access_token);
+      } else {
+        localStorage.removeItem('authToken');
+      }
+      // Defer any additional Supabase calls to avoid deadlocks
       if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        setTimeout(() => {
+          fetchProfile(session.user!.id).then(setProfile);
+        }, 0);
       } else {
         setProfile(null);
       }
@@ -181,6 +195,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem('authToken');
   };
 
   return (
