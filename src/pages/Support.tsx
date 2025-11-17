@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
+import LiveChat from "@/components/LiveChat";
 import { MessageCircle, Send, Mail, MessagesSquare } from "lucide-react";
 
 const Support = () => {
+  const [liveChatOpen, setLiveChatOpen] = useState(false);
   const handleTelegramSupport = () => {
     window.open("https://t.me/Redpaysupport", "_blank");
   };
@@ -19,8 +22,7 @@ const Support = () => {
   };
 
   const handleLiveChat = () => {
-    // This would typically open a live chat widget
-    window.alert("Live chat feature coming soon!");
+    setLiveChatOpen(true);
   };
 
   return (
@@ -121,17 +123,16 @@ const Support = () => {
           <CardContent className="p-6">
             <h3 className="font-bold text-foreground mb-3">Support Hours</h3>
             <p className="text-muted-foreground mb-2">
-              Monday - Friday: 8:00 AM - 8:00 PM
-            </p>
-            <p className="text-muted-foreground mb-2">
-              Saturday - Sunday: 9:00 AM - 6:00 PM
+              24/7 Support - We're here for you around the clock
             </p>
             <p className="text-sm text-muted-foreground mt-4">
-              For urgent issues, use Live Chat (bottom right) for immediate assistance.
+              Average response time: Within a few hours via email, or instantly via Live Chat, WhatsApp, and Telegram.
             </p>
           </CardContent>
         </Card>
       </main>
+
+      <LiveChat open={liveChatOpen} onOpenChange={setLiveChatOpen} />
     </div>
   );
 };
