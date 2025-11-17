@@ -20,9 +20,9 @@ const PaymentInstructions = () => {
   const [rpcCode] = useState("RPC6616288");
 
   const amount = "6,700";
-  const accountNumber = "5569742889";
-  const bankName = "Moniepoint";
-  const accountName = "Sunday Liberty";
+  const accountNumber = "0108835271";
+  const bankName = "Sterling Bank";
+  const accountName = "CHINEMEREM SUNDAY";
   const referenceId = `REF${Date.now()}`;
 
   const copyToClipboard = (text: string, field: string) => {
