@@ -127,53 +127,6 @@ export type Database = {
         }
         Relationships: []
       }
-      support_requests: {
-        Row: {
-          admin_notes: string | null
-          created_at: string | null
-          id: string
-          message: string
-          priority: string
-          resolved_at: string | null
-          status: string
-          subject: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          admin_notes?: string | null
-          created_at?: string | null
-          id?: string
-          message: string
-          priority?: string
-          resolved_at?: string | null
-          status?: string
-          subject: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          admin_notes?: string | null
-          created_at?: string | null
-          id?: string
-          message?: string
-          priority?: string
-          resolved_at?: string | null
-          status?: string
-          subject?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_support_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
       transactions: {
         Row: {
           amount: number
