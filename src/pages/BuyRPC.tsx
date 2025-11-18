@@ -12,6 +12,16 @@ import PaymentNoticeDialog from "@/components/PaymentNoticeDialog";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { z } from "zod";
+
+const buyRPCSchema = z.object({
+  name: z.string().trim()
+    .min(3, 'Name must be at least 3 characters').max(100, 'Name too long')
+    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces'),
+  email: z.string().trim().email('Invalid email address').max(255, 'Email too long'),
+  phone: z.string().trim()
+    .regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number format')
+});
 
 const BuyRPC = () => {
   const { profile } = useAuth();
@@ -48,8 +58,11 @@ const BuyRPC = () => {
   }, []);
 
   const handleProceed = async () => {
-    if (!formData.name || !formData.email || !formData.phone) {
-      toast.error("Please fill in all fields");
+    // Validate form data with Zod
+    const validation = buyRPCSchema.safeParse(formData);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 

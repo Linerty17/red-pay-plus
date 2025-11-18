@@ -33,7 +33,23 @@ const PaymentInstructions = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setScreenshot(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      // Validate file type
+      const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error('Only JPG, PNG, and WEBP images are allowed');
+        return;
+      }
+      
+      // Validate file size (5MB max)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('File must be less than 5MB');
+        return;
+      }
+      
+      setScreenshot(file);
       toast.success("Screenshot uploaded!");
     }
   };
