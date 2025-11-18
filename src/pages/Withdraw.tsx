@@ -13,6 +13,22 @@ import { DollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+const withdrawSchema = z.object({
+  accountNumber: z.string().trim()
+    .regex(/^[0-9]{10}$/, 'Account number must be 10 digits'),
+  accountName: z.string().trim()
+    .min(3, 'Name must be at least 3 characters').max(100, 'Name too long')
+    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces'),
+  bank: z.string().min(1, 'Please select a bank'),
+  amount: z.string().trim()
+    .regex(/^[0-9]+$/, 'Amount must be a number')
+    .refine((val) => parseInt(val) >= 1000, 'Minimum withdrawal is ₦1,000')
+    .refine((val) => parseInt(val) <= 10000000, 'Maximum withdrawal is ₦10,000,000'),
+  rpcCode: z.string().trim()
+    .regex(/^RPC[0-9]+$/, 'Invalid RPC code format')
+});
 
 const Withdraw = () => {
   const navigate = useNavigate();
@@ -33,31 +49,37 @@ const Withdraw = () => {
   ];
 
   const handleWithdraw = async () => {
-    if (!formData.accountNumber || !formData.accountName || !formData.bank || !formData.amount || !formData.rpcCode || !profile) {
-      toast.error("Please fill in all fields");
+    if (!profile) {
+      toast.error("Please log in to continue");
       return;
     }
 
-    // Validate RPC code
-    if (formData.rpcCode !== 'RPC6616288') {
-      toast.error("Invalid RPC Code. Please purchase RPC first.");
+    // Validate form data with Zod
+    const validation = withdrawSchema.safeParse(formData);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
+    // Validate RPC code against database
+    const { data: rpcPurchase } = await supabase
+      .from('rpc_purchases')
+      .select('rpc_code_issued, verified')
+      .eq('user_id', profile.user_id)
+      .eq('verified', true)
+      .single();
+
+    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== formData.rpcCode) {
+      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
       return;
     }
 
     const withdrawAmount = parseInt(formData.amount);
-    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
 
     // Check balance
     if (withdrawAmount > (profile.balance || 0)) {
       toast.error("Insufficient balance");
-      return;
-    }
-
-    if (withdrawAmount < 1000) {
-      toast.error("Minimum withdrawal is ₦1,000");
       return;
     }
 

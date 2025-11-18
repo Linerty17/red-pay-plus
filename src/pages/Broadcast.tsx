@@ -13,6 +13,18 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { z } from "zod";
+
+const broadcastSchema = z.object({
+  phoneNumber: z.string().trim()
+    .regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number format'),
+  amount: z.string().trim()
+    .regex(/^[0-9]+$/, 'Amount must be a number')
+    .refine((val) => parseInt(val) >= 50, 'Minimum purchase is ₦50')
+    .refine((val) => parseInt(val) <= 100000, 'Maximum purchase is ₦100,000'),
+  rpcCode: z.string().trim()
+    .regex(/^RPC[0-9]+$/, 'Invalid RPC code format')
+});
 
 const Broadcast = () => {
   const navigate = useNavigate();
@@ -24,32 +36,42 @@ const Broadcast = () => {
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async () => {
-    if (!phoneNumber || !amount || !rpcCode || !profile) {
-      toast.error("Please fill in all fields");
+    if (!profile) {
+      toast.error("Please log in to continue");
+      return;
+    }
+
+    // Validate form data with Zod
+    const validation = broadcastSchema.safeParse({
+      phoneNumber,
+      amount,
+      rpcCode
+    });
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
+      return;
+    }
+
+    // Validate RPC code against database
+    const { data: rpcPurchase } = await supabase
+      .from('rpc_purchases')
+      .select('rpc_code_issued, verified')
+      .eq('user_id', profile.user_id)
+      .eq('verified', true)
+      .single();
+
+    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== rpcCode) {
+      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
       return;
     }
 
     const purchaseAmount = parseInt(amount);
-    if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    // Validate RPC code from database
-    if (rpcCode !== 'RPC6616288') {
-      toast.error("Invalid RPC Code. Please purchase RPC first.");
-      return;
-    }
 
     // Check balance
     if (purchaseAmount > (profile.balance || 0)) {
       toast.error("Insufficient balance");
-      return;
-    }
-
-    // Minimum amount validation
-    if (purchaseAmount < 50) {
-      toast.error(`Minimum ${isAirtime ? 'airtime' : 'data'} purchase is ₦50`);
       return;
     }
 
