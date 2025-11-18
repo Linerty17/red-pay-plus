@@ -116,7 +116,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       // Generate unique IDs
       const userId = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-      const referralCode = `REF${Math.floor(100000 + Math.random() * 900000)}`;
+      
+      // Generate unique referral code using initials + timestamp + random
+      const initials = (data.firstName[0] + data.lastName[0]).toUpperCase();
+      const timestamp = Date.now().toString().slice(-6);
+      const random = Math.floor(100 + Math.random() * 900);
+      const referralCode = `${initials}${timestamp}${random}`;
 
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
