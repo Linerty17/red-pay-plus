@@ -14,6 +14,7 @@ import {
   History as HistoryIcon,
   HeadphonesIcon,
   Send,
+  Shield,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (profile?.last_claim_at) {
@@ -43,6 +45,22 @@ const Dashboard = () => {
       }
     }
   }, [profile]);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!profile?.auth_user_id) return;
+      
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: profile.auth_user_id,
+        _role: "admin",
+      });
+      
+      setIsAdmin(!!data);
+    };
+    
+    checkAdmin();
+  }, [profile?.auth_user_id]);
 
   // Realtime subscription for balance and referral count updates
   useEffect(() => {
@@ -168,14 +186,22 @@ const Dashboard = () => {
     navigate("/");
   }, [signOut, navigate]);
 
-  const actionButtons = useMemo(() => [
-    { icon: ShoppingBag, label: "BuyRPC", color: "bg-primary", route: "/buyrpc" },
-    { icon: Radio, label: "Broadcast", color: "bg-purple-600", route: "/broadcast" },
-    { icon: Gift, label: "Refer&Earn", color: "bg-blue-600", route: "/refer-earn" },
-    { icon: Users, label: "Community", color: "bg-green-600", route: "/community" },
-    { icon: HistoryIcon, label: "History", color: "bg-orange-600", route: "/history" },
-    { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
-  ], []);
+  const actionButtons = useMemo(() => {
+    const buttons = [
+      { icon: ShoppingBag, label: "BuyRPC", color: "bg-primary", route: "/buyrpc" },
+      { icon: Radio, label: "Broadcast", color: "bg-purple-600", route: "/broadcast" },
+      { icon: Gift, label: "Refer&Earn", color: "bg-blue-600", route: "/refer-earn" },
+      { icon: Users, label: "Community", color: "bg-green-600", route: "/community" },
+      { icon: HistoryIcon, label: "History", color: "bg-orange-600", route: "/history" },
+      { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
+    ];
+
+    if (isAdmin) {
+      buttons.push({ icon: Shield, label: "Admin", color: "bg-yellow-600", route: "/admin" });
+    }
+
+    return buttons;
+  }, [isAdmin]);
 
   // Loading skeleton while profile loads
   if (!profile && !loadError) {
