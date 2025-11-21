@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import { PartyPopper } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -11,9 +12,29 @@ const Welcome = () => {
   const firstName = searchParams.get("firstName") || "User";
   const [balance, setBalance] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
   const targetBalance = 160000;
 
   useEffect(() => {
+    // Check if user was referred
+    const checkReferral = async () => {
+      const refCode = localStorage.getItem("referral_code");
+      if (refCode) {
+        const { data } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('referral_code', refCode)
+          .single();
+        
+        if (data) {
+          setReferrerName(`${data.first_name} ${data.last_name}`);
+        }
+        // Clear the referral code after using it
+        localStorage.removeItem("referral_code");
+      }
+    };
+    checkReferral();
+    
     // Trigger confetti animation
     setShowConfetti(true);
     
@@ -110,6 +131,13 @@ const Welcome = () => {
             </Button>
 
             {/* Additional Info */}
+            {referrerName && (
+              <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/20">
+                <p className="text-sm text-foreground">
+                  🎉 Welcome! You signed up with a referral. <span className="font-semibold">{referrerName}</span> will receive ₦5,000 once your registration completes. Thanks for joining RedPay!
+                </p>
+              </div>
+            )}
             <p className="text-center text-sm text-muted-foreground">
               Start exploring RedPay and enjoy seamless payments
             </p>

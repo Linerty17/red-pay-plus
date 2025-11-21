@@ -41,13 +41,20 @@ const ReferEarn = () => {
     toast.success(`${label} copied!`);
   };
 
-  const shareReferral = () => {
+  const shareReferral = (template: 'casual' | 'friendly' | 'short' = 'casual') => {
     if (!profile) return;
     const referralLink = `${window.location.origin}/?ref=${profile.referral_code}`;
+    
+    const messages = {
+      casual: `🚀 Join me on RedPay and start earning!\nSign up with my link & get started: ${referralLink} ✅\nYou can install the app below 👇`,
+      friendly: `🔥 I'm using RedPay — fast, safe payments + referral rewards!\nUse my link to sign up so we both win: ${referralLink}\nTap the link, register and start earning. You can install the app below 👇`,
+      short: `Join RedPay with my link: ${referralLink} — register now and start earning!`
+    };
+    
     if (navigator.share) {
       navigator.share({
         title: "Join RedPay",
-        text: `Use my referral code ${profile.referral_code} to join RedPay and get ₦5,000 bonus!`,
+        text: messages[template],
         url: referralLink,
       });
     } else {
@@ -154,10 +161,20 @@ const ReferEarn = () => {
               </div>
             </div>
 
-            <Button onClick={shareReferral} className="w-full" size="lg">
-              <Share2 className="w-4 h-4 mr-2" />
-              Share Referral Link
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={() => shareReferral('casual')} className="w-full" size="lg">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share (Quick & Casual)
+              </Button>
+              <Button onClick={() => shareReferral('friendly')} className="w-full" variant="outline" size="lg">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share (Friendly Pitch)
+              </Button>
+              <Button onClick={() => shareReferral('short')} className="w-full" variant="outline" size="lg">
+                <Share2 className="w-4 h-4 mr-2" />
+                Share (Short & Urgent)
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
