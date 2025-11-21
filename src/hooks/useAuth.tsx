@@ -154,46 +154,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (profileError) return { error: profileError };
 
-      // Apply referral from localStorage or form code once
+      // Call server-side edge function to credit referral atomically
       if (referralSource) {
-        console.log('🎯 ReferralCapture: Attempting to apply referral code:', referralSource);
+        console.log('🎯 ReferralCapture: Calling server to apply referral code:', referralSource);
         
-        const { data: referrer, error: referrerError } = await supabase
-          .from('users')
-          .select('user_id, referral_code, first_name, last_name')
-          .eq('referral_code', referralSource)
-          .maybeSingle();
-
-        if (referrerError) {
-          console.error('❌ ReferralError: Failed to fetch referrer:', referrerError);
-        } else if (referrer?.user_id) {
-          console.log('✅ ReferralValidated: Referrer found:', { 
-            referrer_id: referrer.user_id, 
-            name: `${referrer.first_name} ${referrer.last_name}` 
-          });
-          
-          // Create referral record; DB trigger will handle credits/transactions atomically
-          const { error: referralError } = await supabase.from('referrals').insert({
-            referrer_id: referrer.user_id,
-            new_user_id: userId,
-            amount_given: 5000,
-          });
-
-          if (referralError) {
-            // Check if it's a duplicate (idempotency constraint)
-            if (referralError.code === '23505') {
-              console.warn('⚠️ ReferralAlreadyApplied: This user has already been credited');
-            } else {
-              console.error('❌ ReferralError: Failed to create referral record:', referralError);
+        try {
+          const { data: creditResult, error: creditError } = await supabase.functions.invoke('credit-referral', {
+            body: {
+              new_user_id: userId,
+              new_user_email: data.email,
+              referral_code: referralSource
             }
+          });
+
+          if (creditError) {
+            console.error('❌ ReferralError: Failed to call credit function:', creditError);
+          } else if (creditResult?.credited) {
+            console.log('✅ ReferralCredited: Referral bonus applied successfully', creditResult);
           } else {
-            console.log('✅ ReferralCredited: Referral record created successfully. Trigger will update referrer balance and count.', { 
-              referrer_id: referrer.user_id, 
-              new_user_id: userId 
-            });
+            console.warn('⚠️ ReferralNotCredited:', creditResult?.reason || 'Unknown reason', creditResult);
           }
-        } else {
-          console.warn('⚠️ ReferralInvalid: No referrer found with code:', referralSource);
+        } catch (error) {
+          console.error('❌ ReferralError: Exception calling credit function:', error);
         }
         
         // Always clear the stored referral code after attempting to apply it
