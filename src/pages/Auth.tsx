@@ -17,6 +17,8 @@ import Logo from "@/components/Logo";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
+import { UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const signUpSchema = z.object({
   firstName: z.string().trim()
@@ -43,12 +45,27 @@ const Auth = () => {
   const { signUp, signIn, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("signup");
 
   useEffect(() => {
     // Get referral code from URL
     const ref = searchParams.get("ref");
     if (ref) {
       setReferralCode(ref);
+      // Fetch referrer name
+      const fetchReferrer = async () => {
+        const { data } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('referral_code', ref)
+          .single();
+        
+        if (data) {
+          setReferrerName(`${data.first_name} ${data.last_name}`);
+        }
+      };
+      fetchReferrer();
     }
   }, [searchParams]);
 
@@ -143,13 +160,36 @@ const Auth = () => {
           <p className="text-muted-foreground">Your gateway to seamless payments</p>
         </div>
 
+        {referralCode && activeTab === "signup" && (
+          <Card className="bg-primary/10 backdrop-blur-sm border-primary/30 mb-4 shadow-elevated">
+            <CardContent className="pt-6 pb-4 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                <UserPlus className="w-5 h-5" />
+                <p className="font-semibold text-lg">Someone invited you to RedPay 🎉</p>
+              </div>
+              {referrerName ? (
+                <p className="text-sm text-muted-foreground">
+                  You were invited by <span className="font-semibold text-foreground">{referrerName}</span> — sign up now and help them earn ₦5,000!
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Sign up with this referral link to help your friend earn ₦5,000!
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground pt-2 border-t border-border/30 mt-3">
+                By signing up with this link, the inviter will automatically receive ₦5,000 after your account is created. The bonus appears on their dashboard.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="bg-card/90 backdrop-blur-sm border-border shadow-elevated">
           <CardHeader>
             <CardTitle className="text-foreground">Get Started</CardTitle>
             <CardDescription>Create an account or sign in to continue</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signup" className="w-full">
+            <Tabs defaultValue="signup" className="w-full" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
