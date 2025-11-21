@@ -20,6 +20,8 @@ export type Database = {
           created_at: string | null
           date: string | null
           id: string
+          manual_credit_notes: string | null
+          manually_credited: boolean | null
           new_user_id: string
           referrer_id: string
         }
@@ -28,6 +30,8 @@ export type Database = {
           created_at?: string | null
           date?: string | null
           id?: string
+          manual_credit_notes?: string | null
+          manually_credited?: boolean | null
           new_user_id: string
           referrer_id: string
         }
@@ -36,6 +40,8 @@ export type Database = {
           created_at?: string | null
           date?: string | null
           id?: string
+          manual_credit_notes?: string | null
+          manually_credited?: boolean | null
           new_user_id?: string
           referrer_id?: string
         }
