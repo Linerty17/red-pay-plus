@@ -14,6 +14,7 @@ import {
   History as HistoryIcon,
   HeadphonesIcon,
   Send,
+  Shield,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (profile?.last_claim_at) {
@@ -43,6 +45,24 @@ const Dashboard = () => {
       }
     }
   }, [profile]);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!profile?.auth_user_id) return;
+      
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.auth_user_id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      setIsAdmin(!!data);
+    };
+
+    checkAdmin();
+  }, [profile?.auth_user_id]);
 
   // Realtime subscription for balance and referral count updates
   useEffect(() => {
@@ -250,8 +270,19 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto space-y-3">
-        {/* Video Button - Above Balance */}
-        <div className="flex justify-end">
+        {/* Video Button and Admin Button - Above Balance */}
+        <div className="flex justify-end gap-2">
+          {isAdmin && (
+            <Button
+              onClick={() => navigate("/admin/referrals")}
+              variant="outline"
+              size="sm"
+              className="bg-red-500/10 hover:bg-red-500/20 border-red-500 text-red-500 font-semibold"
+            >
+              <Shield className="w-3 h-3 mr-1" />
+              Admin Panel
+            </Button>
+          )}
           <Button
             onClick={() => handleAction("Video")}
             variant="outline"
