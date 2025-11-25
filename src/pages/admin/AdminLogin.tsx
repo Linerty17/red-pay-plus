@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { Navigate } from 'react-router-dom';
 import adminLogo from '@/assets/admin-logo.png';
 
@@ -16,17 +14,14 @@ export default function AdminLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAdminAuth();
 
-  if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  const isAdminAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
 
-  if (isAdmin) {
+  if (isAdminAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
     const trimmedPhone = phoneNumber.trim();
@@ -36,39 +31,14 @@ export default function AdminLogin() {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      // Sign in with the admin account
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'sundaychinemerem66@gmail.com',
-        password: 'Chinemerem2007',
-      });
-
-      if (error) throw error;
-
-      // Verify admin role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', data.user.id)
-        .eq('role', 'admin')
-        .single();
-
-      if (!roleData) {
-        await supabase.auth.signOut();
-        toast.error('Access denied.');
-        return;
-      }
-
-      toast.success('Access granted');
+    setLoading(true);
+    sessionStorage.setItem('admin_auth', 'true');
+    toast.success('Access granted');
+    
+    setTimeout(() => {
       navigate('/admin/dashboard');
-    } catch (error: any) {
-      toast.error('Authentication failed. Please contact support.');
-      console.error(error);
-    } finally {
       setLoading(false);
-    }
+    }, 300);
   };
 
   return (
