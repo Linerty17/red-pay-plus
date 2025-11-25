@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(6, 'Access code must be at least 6 characters'),
 });
 
 export default function AdminLogin() {
@@ -45,7 +45,7 @@ export default function AdminLogin() {
 
       if (error) throw error;
 
-      toast.success('Password reset email sent! Check your inbox.');
+      toast.success('Access code reset email sent! Check your inbox.');
       setResetMode(false);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -72,7 +72,7 @@ export default function AdminLogin() {
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password. Click "Forgot Password?" to reset.');
+          toast.error('Invalid email or access code. Click "Forgot Access Code?" to reset.');
         } else {
           toast.error(error.message);
         }
@@ -113,9 +113,9 @@ export default function AdminLogin() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <img src={adminLogo} alt="RedPay Admin" className="h-16 mx-auto mb-4" />
-          <CardTitle className="text-2xl">{resetMode ? 'Reset Password' : 'Admin Login'}</CardTitle>
+          <CardTitle className="text-2xl">{resetMode ? 'Reset Access Code' : 'Admin Login'}</CardTitle>
           <CardDescription>
-            {resetMode ? 'Enter your email to receive a password reset link' : 'Sign in to access the admin dashboard'}
+            {resetMode ? 'Enter your email to receive an access code reset link' : 'Enter your email and access code'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -158,13 +158,14 @@ export default function AdminLogin() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Access Code</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  placeholder="Enter your access code"
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
@@ -175,7 +176,7 @@ export default function AdminLogin() {
                 onClick={() => setResetMode(true)}
                 className="w-full text-sm text-primary hover:underline"
               >
-                Forgot Password?
+                Forgot Access Code?
               </button>
             </form>
           )}
