@@ -28,7 +28,8 @@ const menuItems = [
   { title: 'Referrals', url: '/admin/referrals', icon: Users },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: Receipt },
-  { title: 'Push Notifications', url: '/admin/push', icon: Bell },
+  { title: 'Send Push', url: '/admin/push', icon: Bell },
+  { title: 'Notification Stats', url: '/admin/notifications', icon: Bell },
   { title: 'Audit Logs', url: '/admin/audit', icon: FileText },
 ];
 

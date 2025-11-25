@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AdminSidebar } from './AdminSidebar';
+import { AdminErrorBoundary } from './AdminErrorBoundary';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import adminLogo from '@/assets/admin-logo.png';
@@ -27,7 +28,9 @@ export function AdminLayout() {
             <h1 className="text-xl font-bold text-foreground">RedPay Admin Dashboard</h1>
           </header>
           <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+            <AdminErrorBoundary>
+              <Outlet />
+            </AdminErrorBoundary>
           </main>
         </div>
       </div>

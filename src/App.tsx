@@ -27,6 +27,7 @@ import AdminReferrals from "./pages/admin/AdminReferrals";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminPush from "./pages/admin/AdminPush";
+import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminAudit from "./pages/admin/AdminAudit";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => {
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="push" element={<AdminPush />} />
+                <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="audit" element={<AdminAudit />} />
               </Route>
               

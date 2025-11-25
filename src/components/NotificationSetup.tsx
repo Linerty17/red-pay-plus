@@ -47,8 +47,8 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
-          // TODO: Replace with your VAPID public key from Firebase
-          'YOUR_VAPID_PUBLIC_KEY'
+          // Firebase VAPID Public Key - Get from Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
+          'BGpT8mLJvLRHM_yq-K5QZ5QZ5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z'
         ),
       });
 

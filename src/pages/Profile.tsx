@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationSetup } from "@/components/NotificationSetup";
 
 const Profile = () => {
   const { profile, refreshProfile } = useAuth();
@@ -174,6 +175,13 @@ const Profile = () => {
             ))}
           </CardContent>
         </Card>
+
+        {/* Push Notifications */}
+        {profile.auth_user_id && (
+          <div className="animate-fade-in">
+            <NotificationSetup userId={profile.user_id} />
+          </div>
+        )}
 
         {/* Actions */}
         <div className="space-y-2 animate-fade-in">
