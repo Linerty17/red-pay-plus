@@ -4,6 +4,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import LoadingSpinner from "./LoadingSpinner";
 import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import adminLogo from "@/assets/redpay-admin-logo.png";
 import { Users, Bell, Receipt, LayoutDashboard, LogOut } from "lucide-react";
 import redpayLogo from "@/assets/redpay-logo.png";
 

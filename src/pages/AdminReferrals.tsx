@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Filter, CheckCircle, AlertCircle, Download, TrendingUp, UserCog } from "lucide-react";
+import { Search, Filter, CheckCircle, AlertCircle, Download, TrendingUp, UserCog, XCircle } from "lucide-react";
 
 export default function AdminReferrals() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -35,11 +35,13 @@ export default function AdminReferrals() {
         .order("created_at", { ascending: false });
 
       if (statusFilter === "credited") {
-        query = query.not("amount_given", "is", null);
+        query = query.eq('status', 'confirmed');
       } else if (statusFilter === "pending") {
-        query = query.is("amount_given", null).eq("manually_credited", false);
+        query = query.eq('status', 'pending');
       } else if (statusFilter === "manual") {
-        query = query.eq("manually_credited", true);
+        query = query.in('status', ['manual']).or('manually_credited.eq.true');
+      } else if (statusFilter === "rejected") {
+        query = query.eq('status', 'rejected');
       }
 
       if (searchQuery) {
@@ -86,11 +88,16 @@ export default function AdminReferrals() {
   };
 
   const getStatusBadge = (referral: any) => {
-    if (referral.manually_credited) {
+    const status = referral.status || 'pending';
+    
+    if (status === 'confirmed') {
+      return <Badge variant="default" className="bg-primary/20 text-primary"><CheckCircle className="w-3 h-3 mr-1" />Confirmed</Badge>;
+    }
+    if (status === 'manual' || referral.manually_credited) {
       return <Badge variant="secondary" className="bg-accent/20 text-accent-foreground"><CheckCircle className="w-3 h-3 mr-1" />Manual</Badge>;
     }
-    if (referral.amount_given) {
-      return <Badge variant="default" className="bg-primary/20 text-primary"><CheckCircle className="w-3 h-3 mr-1" />Auto</Badge>;
+    if (status === 'rejected') {
+      return <Badge variant="destructive" className="bg-red-500/20 text-red-600"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
     }
     return <Badge variant="outline" className="border-muted-foreground/30"><AlertCircle className="w-3 h-3 mr-1" />Pending</Badge>;
   };
@@ -216,9 +223,10 @@ export default function AdminReferrals() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Referrals</SelectItem>
-                  <SelectItem value="credited">Auto Credited</SelectItem>
+                  <SelectItem value="credited">Confirmed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="manual">Manual Credits</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
