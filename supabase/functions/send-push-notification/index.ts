@@ -5,8 +5,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface FCMMessage {
+  token: string;
+  notification: {
+    title: string;
+    body: string;
+    image?: string;
+  };
+  data?: Record<string, string>;
+  webpush?: {
+    fcm_options?: {
+      link?: string;
+    };
+  };
+}
+
+async function sendFCMNotification(message: FCMMessage): Promise<boolean> {
+  const FCM_SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
+  
+  if (!FCM_SERVER_KEY) {
+    console.error('FCM_SERVER_KEY not configured');
+    return false;
+  }
+
+  try {
+    const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `key=${FCM_SERVER_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: message.token,
+        notification: message.notification,
+        data: message.data || {},
+        webpush: message.webpush,
+      }),
+    });
+
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('FCM API error:', result);
+      return false;
+    }
+
+    console.log('FCM notification sent successfully:', result);
+    return result.success === 1;
+  } catch (err: any) {
+    console.error('Failed to send FCM notification:', err);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -18,7 +70,6 @@ Deno.serve(async (req) => {
     );
 
     const { notificationId } = await req.json();
-
     console.log('Processing notification:', notificationId);
 
     // Get notification details
@@ -39,31 +90,59 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${subscriptions?.length || 0} subscriptions`);
 
-    // NOTE: This is where you would integrate with FCM or another push service
-    // For now, we'll just log the notifications
     let sentCount = 0;
+    let deliveredCount = 0;
     let failedCount = 0;
 
+    // Send notifications to all subscribed users
     for (const subscription of subscriptions || []) {
       try {
-        // TODO: Implement actual push notification sending with FCM
-        // Example FCM call would go here
-        console.log(`Would send to ${subscription.user_id}: ${notification.title}`);
-        
-        // Log successful delivery
-        await supabase.from('push_notification_logs').insert({
-          notification_id: notificationId,
-          user_id: subscription.user_id,
-          status: 'delivered',
-          sent_at: new Date().toISOString(),
-          delivered_at: new Date().toISOString(),
-        });
+        const fcmMessage: FCMMessage = {
+          token: subscription.fcm_token,
+          notification: {
+            title: notification.title,
+            body: notification.body,
+            image: notification.image_url || undefined,
+          },
+          data: {
+            notification_id: notificationId,
+            ...(notification.data_payload || {}),
+          },
+        };
 
-        sentCount++;
+        // Add webpush link if CTA URL provided
+        if (notification.cta_url) {
+          fcmMessage.webpush = {
+            fcm_options: {
+              link: notification.cta_url,
+            },
+          };
+        }
+
+        const success = await sendFCMNotification(fcmMessage);
+
+        if (success) {
+          await supabase.from('push_notification_logs').insert({
+            notification_id: notificationId,
+            user_id: subscription.user_id,
+            status: 'delivered',
+            sent_at: new Date().toISOString(),
+            delivered_at: new Date().toISOString(),
+          });
+          sentCount++;
+          deliveredCount++;
+        } else {
+          await supabase.from('push_notification_logs').insert({
+            notification_id: notificationId,
+            user_id: subscription.user_id,
+            status: 'failed',
+            error_message: 'FCM delivery failed',
+          });
+          failedCount++;
+        }
       } catch (err: any) {
         console.error(`Failed to send to ${subscription.user_id}:`, err);
         
-        // Log failed delivery
         await supabase.from('push_notification_logs').insert({
           notification_id: notificationId,
           user_id: subscription.user_id,
@@ -82,15 +161,18 @@ Deno.serve(async (req) => {
         status: 'sent',
         sent_at: new Date().toISOString(),
         sent_count: sentCount,
-        delivered_count: sentCount,
+        delivered_count: deliveredCount,
         failed_count: failedCount,
       })
       .eq('id', notificationId);
+
+    console.log(`Notification sent: ${deliveredCount} delivered, ${failedCount} failed`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         sentCount, 
+        deliveredCount,
         failedCount,
         message: 'Push notifications processed'
       }),
