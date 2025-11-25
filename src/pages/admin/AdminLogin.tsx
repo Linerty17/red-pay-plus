@@ -1,34 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { Navigate } from 'react-router-dom';
 import adminLogo from '@/assets/admin-logo.png';
 
 const ADMIN_PHONE = '08109375382';
-const ADMIN_EMAIL = 'sundaychinemerem66@gmail.com';
-const ADMIN_PASSWORD = 'Chinemerem2007';
 
 export default function AdminLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAdminAuth();
 
-  if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  // Check if already authenticated
+  const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
 
-  if (isAdmin) {
+  if (isAdminAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
     const trimmedPhone = phoneNumber.trim();
@@ -38,45 +32,16 @@ export default function AdminLogin() {
       return;
     }
 
-    try {
-      setLoading(true);
-
-      // Automatically authenticate with backend when correct phone number is entered
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
-      });
-
-      if (error) {
-        console.error('Auth error:', error);
-        toast.error('Authentication system error. Please contact support.');
-        return;
-      }
-
-      // Check if user is admin
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', data.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (roleError) throw roleError;
-
-      if (!roleData) {
-        await supabase.auth.signOut();
-        toast.error('Access denied. Admin privileges required.');
-        return;
-      }
-
-      toast.success('Access granted');
+    setLoading(true);
+    
+    // Set admin session
+    sessionStorage.setItem('admin_authenticated', 'true');
+    
+    toast.success('Access granted');
+    setTimeout(() => {
       navigate('/admin/dashboard');
-    } catch (error: any) {
-      console.error('Login error:', error);
-      toast.error('System error. Please try again.');
-    } finally {
       setLoading(false);
-    }
+    }, 500);
   };
 
   return (
