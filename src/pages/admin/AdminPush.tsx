@@ -34,7 +34,7 @@ export default function AdminPush() {
           body,
           cta_url: ctaUrl || null,
           target_type: targetType,
-          status: 'draft',
+          status: 'pending',
           created_by: adminUser.data.user?.id || '',
         })
         .select()
@@ -42,28 +42,12 @@ export default function AdminPush() {
 
       if (notifError) throw notifError;
 
-      // Get target users based on selection
-      let userQuery = supabase
-        .from('push_subscriptions')
-        .select('user_id, fcm_token');
+      // Call edge function to send notifications
+      const { data, error: functionError } = await supabase.functions.invoke('send-push-notification', {
+        body: { notificationId: notification.id }
+      });
 
-      if (targetType !== 'all') {
-        // Add filtering logic here based on targetType
-      }
-
-      const { data: subscriptions, error: subError } = await userQuery;
-
-      if (subError) throw subError;
-
-      // Update notification status
-      await supabase
-        .from('push_notifications')
-        .update({ 
-          status: 'sent', 
-          sent_at: new Date().toISOString(),
-          sent_count: subscriptions?.length || 0
-        })
-        .eq('id', notification.id);
+      if (functionError) throw functionError;
 
       // Log the action
       await supabase
@@ -75,11 +59,11 @@ export default function AdminPush() {
             notification_id: notification.id,
             title,
             target_type: targetType,
-            recipient_count: subscriptions?.length || 0
+            result: data
           },
         });
 
-      toast.success(`Notification queued for ${subscriptions?.length || 0} users`);
+      toast.success(`Notification sent successfully! Delivered to ${data.sentCount || 0} users`);
       
       // Reset form
       setTitle('');
