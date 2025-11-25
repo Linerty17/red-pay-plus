@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, CheckCircle, XCircle, Eye, RefreshCw } from "lucide-react";
+import { Search, CheckCircle, XCircle, Eye, RefreshCw, UserCog } from "lucide-react";
 
 export default function AdminPayments() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,6 +41,25 @@ export default function AdminPayments() {
       const { data, error } = await query;
       if (error) throw error;
       return data;
+    },
+  });
+
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          admin_user_id: user.id,
+          action_type: "user_impersonation",
+          target_user_id: userId,
+          details: { timestamp: new Date().toISOString() },
+        });
+      }
+      sessionStorage.setItem("impersonating", userId);
+      window.location.href = "/dashboard";
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to impersonate user");
     },
   });
 
@@ -174,7 +193,7 @@ export default function AdminPayments() {
                     <TableHead>Account</TableHead>
                     <TableHead>Receipt</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -221,15 +240,26 @@ export default function AdminPayments() {
                         </TableCell>
                         <TableCell>{getStatusBadge(payment.verified)}</TableCell>
                         <TableCell>
-                          {payment.verified === null && (
+                          <div className="flex gap-2">
+                            {payment.verified === null && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedPayment(payment)}
+                              >
+                                Review
+                              </Button>
+                            )}
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedPayment(payment)}
+                              onClick={() => impersonateMutation.mutate(payment.user_id)}
+                              className="gap-1"
+                              title="Impersonate user"
                             >
-                              Review
+                              <UserCog className="w-3 h-3" />
                             </Button>
-                          )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
