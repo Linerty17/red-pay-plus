@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
-import { Phone, Smartphone, Lock } from "lucide-react";
+import { Phone, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,61 +22,18 @@ const broadcastSchema = z.object({
     .regex(/^[0-9]+$/, 'Amount must be a number')
     .refine((val) => parseInt(val) >= 50, 'Minimum purchase is ₦50')
     .refine((val) => parseInt(val) <= 100000, 'Maximum purchase is ₦100,000'),
+  rpcCode: z.string().trim()
+    .regex(/^RPC[0-9]+$/, 'Invalid RPC code format')
 });
 
 const Broadcast = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
-  const [isAccessGranted, setIsAccessGranted] = useState(false);
-  const [pinInput, setPinInput] = useState("");
-  const [verifyingPin, setVerifyingPin] = useState(false);
   const [isAirtime, setIsAirtime] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [rpcCode, setRpcCode] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const verifyAccessPin = async () => {
-    if (!profile) {
-      toast.error("Please log in to continue");
-      return;
-    }
-
-    if (!pinInput.trim()) {
-      toast.error("Please enter your RPC access code");
-      return;
-    }
-
-    setVerifyingPin(true);
-    try {
-      // Check if user has purchased RPC and verify the code
-      const { data: rpcData } = await supabase
-        .from('users')
-        .select('rpc_code, rpc_purchased')
-        .eq('user_id', profile.user_id)
-        .single();
-
-      if (!rpcData?.rpc_purchased || !rpcData?.rpc_code) {
-        toast.error("No RPC code found. Please purchase RPC first.");
-        navigate('/buy-rpc');
-        return;
-      }
-
-      if (rpcData.rpc_code !== pinInput.trim()) {
-        toast.error("Invalid RPC code. Redirecting to Buy RPC...");
-        setTimeout(() => navigate('/buy-rpc'), 1500);
-        return;
-      }
-
-      // Access granted
-      setIsAccessGranted(true);
-      toast.success("Access granted!");
-    } catch (error: any) {
-      console.error('Error verifying RPC code:', error);
-      toast.error("Failed to verify RPC code");
-    } finally {
-      setVerifyingPin(false);
-    }
-  };
 
   const handlePurchase = async () => {
     if (!profile) {
@@ -87,12 +44,26 @@ const Broadcast = () => {
     // Validate form data with Zod
     const validation = broadcastSchema.safeParse({
       phoneNumber,
-      amount
+      amount,
+      rpcCode
     });
     
     if (!validation.success) {
       const firstError = validation.error.errors[0];
       toast.error(firstError.message);
+      return;
+    }
+
+    // Validate RPC code against database
+    const { data: rpcPurchase } = await supabase
+      .from('rpc_purchases')
+      .select('rpc_code_issued, verified')
+      .eq('user_id', profile.user_id)
+      .eq('verified', true)
+      .single();
+
+    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== rpcCode) {
+      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
       return;
     }
 
@@ -166,68 +137,6 @@ const Broadcast = () => {
     );
   }
 
-  // Show PIN entry screen if access not granted
-  if (!isAccessGranted) {
-    return (
-      <div className="min-h-screen w-full relative">
-        <LiquidBackground />
-
-        <header className="relative z-10 px-4 py-4 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
-          <Logo />
-          <ProfileButton />
-        </header>
-
-        <main className="relative z-10 px-4 py-8 max-w-md mx-auto">
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
-            <CardContent className="p-8 space-y-6">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-                  <Lock className="w-8 h-8 text-primary" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground">Broadcast Access</h1>
-                <p className="text-sm text-muted-foreground">Enter your RPC code to proceed</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pin">RPC Access Code</Label>
-                  <Input
-                    id="pin"
-                    type="password"
-                    placeholder="Enter RPC code"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === 'Enter' && verifyAccessPin()}
-                    className="text-center text-lg tracking-widest"
-                    disabled={verifyingPin}
-                  />
-                </div>
-
-                <Button
-                  onClick={verifyAccessPin}
-                  className="w-full"
-                  size="lg"
-                  disabled={verifyingPin}
-                >
-                  {verifyingPin ? "Verifying..." : "Verify & Continue"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/buy-rpc')}
-                  className="w-full"
-                >
-                  Don't have RPC? Buy Now
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
-  // Main broadcast form (shown after PIN verification)
   return (
     <div className="min-h-screen w-full relative">
       <LiquidBackground />
@@ -326,7 +235,20 @@ const Broadcast = () => {
               </div>
             </div>
 
-            <Button
+              <div className="space-y-2">
+                <Label htmlFor="rpcCode">RPC Code</Label>
+                <Input
+                  id="rpcCode"
+                  type="password"
+                  placeholder="••••••••"
+                  value={rpcCode}
+                  onChange={(e) => setRpcCode(e.target.value.toUpperCase())}
+                  className="bg-background/50"
+                />
+                <p className="text-xs text-destructive">⚠️ RPC code is required to proceed</p>
+              </div>
+
+              <Button
               onClick={handlePurchase}
               className="w-full"
               size="lg"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { DollarSign, Lock } from "lucide-react";
+import { DollarSign, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,59 +33,14 @@ const withdrawSchema = z.object({
 const Withdraw = () => {
   const navigate = useNavigate();
   const { profile, refreshProfile } = useAuth();
-  const [isAccessGranted, setIsAccessGranted] = useState(false);
-  const [pinInput, setPinInput] = useState("");
-  const [verifyingPin, setVerifyingPin] = useState(false);
   const [formData, setFormData] = useState({
     accountNumber: "",
     accountName: "",
     bank: "",
     amount: "",
+    rpcCode: "",
   });
   const [loading, setLoading] = useState(false);
-
-  const verifyAccessPin = async () => {
-    if (!profile) {
-      toast.error("Please log in to continue");
-      return;
-    }
-
-    if (!pinInput.trim()) {
-      toast.error("Please enter your RPC access code");
-      return;
-    }
-
-    setVerifyingPin(true);
-    try {
-      // Check if user has purchased RPC and verify the code
-      const { data: rpcData } = await supabase
-        .from('users')
-        .select('rpc_code, rpc_purchased')
-        .eq('user_id', profile.user_id)
-        .single();
-
-      if (!rpcData?.rpc_purchased || !rpcData?.rpc_code) {
-        toast.error("No RPC code found. Please purchase RPC first.");
-        navigate('/buy-rpc');
-        return;
-      }
-
-      if (rpcData.rpc_code !== pinInput.trim()) {
-        toast.error("Invalid RPC code. Redirecting to Buy RPC...");
-        setTimeout(() => navigate('/buy-rpc'), 1500);
-        return;
-      }
-
-      // Access granted
-      setIsAccessGranted(true);
-      toast.success("Access granted!");
-    } catch (error: any) {
-      console.error('Error verifying RPC code:', error);
-      toast.error("Failed to verify RPC code");
-    } finally {
-      setVerifyingPin(false);
-    }
-  };
 
   const banks = [
     "Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank",
@@ -99,24 +54,24 @@ const Withdraw = () => {
       return;
     }
 
-    // Validate form data with Zod (without rpcCode since already verified)
-    const withdrawSchemaWithoutRpc = z.object({
-      accountNumber: z.string().trim()
-        .regex(/^[0-9]{10}$/, 'Account number must be 10 digits'),
-      accountName: z.string().trim()
-        .min(3, 'Name must be at least 3 characters').max(100, 'Name too long')
-        .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces'),
-      bank: z.string().min(1, 'Please select a bank'),
-      amount: z.string().trim()
-        .regex(/^[0-9]+$/, 'Amount must be a number')
-        .refine((val) => parseInt(val) >= 1000, 'Minimum withdrawal is ₦1,000')
-        .refine((val) => parseInt(val) <= 10000000, 'Maximum withdrawal is ₦10,000,000'),
-    });
-
-    const validation = withdrawSchemaWithoutRpc.safeParse(formData);
+    // Validate form data with Zod
+    const validation = withdrawSchema.safeParse(formData);
     if (!validation.success) {
       const firstError = validation.error.errors[0];
       toast.error(firstError.message);
+      return;
+    }
+
+    // Validate RPC code against database
+    const { data: rpcPurchase } = await supabase
+      .from('rpc_purchases')
+      .select('rpc_code_issued, verified')
+      .eq('user_id', profile.user_id)
+      .eq('verified', true)
+      .single();
+
+    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== formData.rpcCode) {
+      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
       return;
     }
 
@@ -192,68 +147,6 @@ const Withdraw = () => {
     );
   }
 
-  // Show PIN entry screen if access not granted
-  if (!isAccessGranted) {
-    return (
-      <div className="min-h-screen w-full relative">
-        <LiquidBackground />
-
-        <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
-          <Logo />
-          <ProfileButton />
-        </header>
-
-        <main className="relative z-10 px-3 py-8 max-w-md mx-auto">
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
-            <CardContent className="p-8 space-y-6">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-                  <Lock className="w-8 h-8 text-primary" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground">Withdrawal Access</h1>
-                <p className="text-sm text-muted-foreground">Enter your RPC code to proceed</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pin">RPC Access Code</Label>
-                  <Input
-                    id="pin"
-                    type="password"
-                    placeholder="Enter RPC code"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === 'Enter' && verifyAccessPin()}
-                    className="text-center text-lg tracking-widest"
-                    disabled={verifyingPin}
-                  />
-                </div>
-
-                <Button
-                  onClick={verifyAccessPin}
-                  className="w-full"
-                  size="lg"
-                  disabled={verifyingPin}
-                >
-                  {verifyingPin ? "Verifying..." : "Verify & Continue"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/buy-rpc')}
-                  className="w-full"
-                >
-                  Don't have RPC? Buy Now
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
-  // Main withdrawal form (shown after PIN verification)
   return (
     <div className="min-h-screen w-full relative">
       <LiquidBackground />
@@ -346,6 +239,19 @@ const Withdraw = () => {
                 <p className="text-xs text-muted-foreground">Minimum: ₦1,000</p>
               </div>
 
+              {/* RPC Code */}
+              <div className="space-y-1">
+                <Label htmlFor="rpcCode" className="text-xs">Enter RPC Code</Label>
+                <Input
+                  id="rpcCode"
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.rpcCode}
+                  onChange={(e) => setFormData({ ...formData, rpcCode: e.target.value.toUpperCase() })}
+                  className="h-9"
+                />
+                <p className="text-xs text-destructive">⚠️ RPC code is required for withdrawal</p>
+              </div>
             </div>
 
             <Button onClick={handleWithdraw} className="w-full" size="lg">
