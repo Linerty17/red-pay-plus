@@ -31,7 +31,10 @@ export default function AdminLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (phoneNumber !== ADMIN_PHONE) {
+    const trimmedPhone = phoneNumber.trim();
+    console.log('Entered phone:', trimmedPhone, 'Expected:', ADMIN_PHONE, 'Match:', trimmedPhone === ADMIN_PHONE);
+    
+    if (trimmedPhone !== ADMIN_PHONE) {
       toast.error('Invalid access number. Access denied.');
       return;
     }
@@ -39,15 +42,19 @@ export default function AdminLogin() {
     try {
       setLoading(true);
 
+      console.log('Phone verified, attempting authentication...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
       });
 
       if (error) {
+        console.error('Auth error:', error);
         toast.error('Authentication failed. Please contact support.');
         return;
       }
+
+      console.log('Authentication successful, checking admin role...');
 
       // Check if user is admin
       const { data: roleData, error: roleError } = await supabase
