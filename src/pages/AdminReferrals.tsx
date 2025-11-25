@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Filter, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Search, Filter, CheckCircle, AlertCircle, Download, TrendingUp } from "lucide-react";
 
 export default function AdminReferrals() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,12 +95,88 @@ export default function AdminReferrals() {
     return <Badge variant="outline" className="border-muted-foreground/30"><AlertCircle className="w-3 h-3 mr-1" />Pending</Badge>;
   };
 
+  const exportToCSV = () => {
+    if (!referrals || referrals.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const headers = ["Date", "Referrer Name", "Referrer Email", "New User Name", "New User Email", "Amount", "Status", "Notes"];
+    const rows = referrals.map(r => [
+      format(new Date(r.created_at), "yyyy-MM-dd HH:mm"),
+      `${r.referrer?.first_name} ${r.referrer?.last_name}`,
+      r.referrer?.email,
+      `${r.new_user?.first_name} ${r.new_user?.last_name}`,
+      r.new_user?.email,
+      r.amount_given || "0",
+      r.manually_credited ? "Manual" : r.amount_given ? "Auto" : "Pending",
+      r.manual_credit_notes || ""
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `referrals_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV exported successfully");
+  };
+
+  const totalEarnings = referrals?.reduce((sum, r) => sum + (r.amount_given || 0), 0) || 0;
+  const pendingCount = referrals?.filter(r => !r.amount_given && !r.manually_credited).length || 0;
+  const todayCount = referrals?.filter(r => {
+    const today = new Date();
+    const refDate = new Date(r.created_at);
+    return refDate.toDateString() === today.toDateString();
+  }).length || 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight">Referral Management</h1>
+          <Button onClick={exportToCSV} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <TrendingUp className="w-4 h-4" />
+                Total Referrals
+              </div>
+              <div className="text-2xl font-bold">{referrals?.length || 0}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardContent className="p-6">
+              <div className="text-sm text-muted-foreground mb-1">Total Earnings</div>
+              <div className="text-2xl font-bold">₦{totalEarnings.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardContent className="p-6">
+              <div className="text-sm text-muted-foreground mb-1">Pending Credits</div>
+              <div className="text-2xl font-bold text-amber-500">{pendingCount}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardContent className="p-6">
+              <div className="text-sm text-muted-foreground mb-1">Credits Today</div>
+              <div className="text-2xl font-bold text-primary">{todayCount}</div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">Referral Management</CardTitle>
+            <CardTitle>All Referrals</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col md:flex-row gap-4">
@@ -240,19 +317,9 @@ export default function AdminReferrals() {
               </Table>
             </div>
 
-            <div className="flex justify-between items-center text-sm text-muted-foreground pt-4">
-              <div>
-                Total Referrals: <span className="font-semibold text-foreground">{referrals?.length || 0}</span>
-              </div>
-              <div>
-                Pending: <span className="font-semibold text-foreground">
-                  {referrals?.filter(r => !r.amount_given && !r.manually_credited).length || 0}
-                </span>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
