@@ -2,3 +2,6 @@ project_id = "tneqdznpappgpepkelav"
 
 [functions.credit-referral]
 verify_jwt = false
+
+[functions.manual-credit-referral]
+verify_jwt = true
