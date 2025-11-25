@@ -1,20 +1,20 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AdminSidebar } from './AdminSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import adminLogo from '@/assets/admin-logo.png';
 
 export function AdminLayout() {
-  const { isAdmin, loading, signOut } = useAdminAuth();
+  const isAdminAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!isAdmin) {
+  if (!isAdminAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_auth');
+    window.location.href = '/admin/login';
+  };
 
   return (
     <SidebarProvider>
@@ -26,7 +26,7 @@ export function AdminLayout() {
             <img src={adminLogo} alt="RedPay Admin" className="h-10" />
             <h1 className="text-xl font-bold text-foreground">RedPay Admin Dashboard</h1>
             <button
-              onClick={signOut}
+              onClick={handleLogout}
               className="ml-auto text-sm text-muted-foreground hover:text-foreground"
             >
               Logout
