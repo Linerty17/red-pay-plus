@@ -14,30 +14,235 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      push_campaigns: {
+        Row: {
+          admin_user_id: string
+          body: string
+          created_at: string | null
+          id: string
+          target_criteria: Json | null
+          title: string
+        }
+        Insert: {
+          admin_user_id: string
+          body: string
+          created_at?: string | null
+          id?: string
+          target_criteria?: Json | null
+          title: string
+        }
+        Update: {
+          admin_user_id?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+          target_criteria?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
+      push_notification_logs: {
+        Row: {
+          clicked_at: string | null
+          created_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          notification_id: string
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id: string
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string | null
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_notification_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "push_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_notifications: {
+        Row: {
+          body: string
+          click_count: number | null
+          created_at: string | null
+          created_by: string
+          cta_url: string | null
+          data_payload: Json | null
+          delivered_count: number | null
+          failed_count: number | null
+          id: string
+          image_url: string | null
+          repeat_type: string | null
+          schedule_at: string | null
+          sent_at: string | null
+          sent_count: number | null
+          status: string | null
+          target_criteria: Json | null
+          target_type: string
+          title: string
+        }
+        Insert: {
+          body: string
+          click_count?: number | null
+          created_at?: string | null
+          created_by: string
+          cta_url?: string | null
+          data_payload?: Json | null
+          delivered_count?: number | null
+          failed_count?: number | null
+          id?: string
+          image_url?: string | null
+          repeat_type?: string | null
+          schedule_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_criteria?: Json | null
+          target_type?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          click_count?: number | null
+          created_at?: string | null
+          created_by?: string
+          cta_url?: string | null
+          data_payload?: Json | null
+          delivered_count?: number | null
+          failed_count?: number | null
+          id?: string
+          image_url?: string | null
+          repeat_type?: string | null
+          schedule_at?: string | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_criteria?: Json | null
+          target_type?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          fcm_token: string
+          id: string
+          platform: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fcm_token: string
+          id?: string
+          platform?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fcm_token?: string
+          id?: string
+          platform?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           amount_given: number | null
+          confirmed_at: string | null
           created_at: string | null
           date: string | null
           id: string
+          manual_credit_notes: string | null
+          manually_credited: boolean | null
           new_user_id: string
           referrer_id: string
+          status: string | null
         }
         Insert: {
           amount_given?: number | null
+          confirmed_at?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
+          manual_credit_notes?: string | null
+          manually_credited?: boolean | null
           new_user_id: string
           referrer_id: string
+          status?: string | null
         }
         Update: {
           amount_given?: number | null
+          confirmed_at?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
+          manual_credit_notes?: string | null
+          manually_credited?: boolean | null
           new_user_id?: string
           referrer_id?: string
+          status?: string | null
         }
         Relationships: [
           {
@@ -230,6 +435,30 @@ export type Database = {
           },
         ]
       }
+      user_notification_preferences: {
+        Row: {
+          created_at: string | null
+          id: string
+          push_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          push_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          push_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -316,6 +545,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_referral: {
+        Args: { _amount?: number; _new_user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -323,6 +556,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
