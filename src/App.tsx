@@ -20,6 +20,14 @@ import SuccessPage from "./pages/SuccessPage";
 import ReferEarn from "./pages/ReferEarn";
 import Receipt from "./pages/Receipt";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/admin/AdminLogin";
+import { AdminLayout } from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminReferrals from "./pages/admin/AdminReferrals";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminTransactions from "./pages/admin/AdminTransactions";
+import AdminPush from "./pages/admin/AdminPush";
+import AdminAudit from "./pages/admin/AdminAudit";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +55,18 @@ const App = () => {
               <Route path="/profile" element={<Profile />} />
               <Route path="/success" element={<SuccessPage />} />
               <Route path="/refer-earn" element={<ReferEarn />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="referrals" element={<AdminReferrals />} />
+                <Route path="payments" element={<AdminPayments />} />
+                <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="push" element={<AdminPush />} />
+                <Route path="audit" element={<AdminAudit />} />
+              </Route>
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
