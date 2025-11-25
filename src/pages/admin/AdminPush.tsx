@@ -80,9 +80,11 @@ export default function AdminPush() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Push Notifications</h1>
-        <p className="text-muted-foreground">Send notifications to app users</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">Send Push Notification</h1>
+          <p className="text-muted-foreground">Compose and send notifications to app users</p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
