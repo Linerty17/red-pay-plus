@@ -32,7 +32,6 @@ export default function AdminLogin() {
     e.preventDefault();
     
     const trimmedPhone = phoneNumber.trim();
-    console.log('Entered phone:', trimmedPhone, 'Expected:', ADMIN_PHONE, 'Match:', trimmedPhone === ADMIN_PHONE);
     
     if (trimmedPhone !== ADMIN_PHONE) {
       toast.error('Invalid access number. Access denied.');
@@ -42,7 +41,7 @@ export default function AdminLogin() {
     try {
       setLoading(true);
 
-      console.log('Phone verified, attempting authentication...');
+      // Automatically authenticate with backend when correct phone number is entered
       const { data, error } = await supabase.auth.signInWithPassword({
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
@@ -50,11 +49,9 @@ export default function AdminLogin() {
 
       if (error) {
         console.error('Auth error:', error);
-        toast.error('Authentication failed. Please contact support.');
+        toast.error('Authentication system error. Please contact support.');
         return;
       }
-
-      console.log('Authentication successful, checking admin role...');
 
       // Check if user is admin
       const { data: roleData, error: roleError } = await supabase
@@ -75,7 +72,8 @@ export default function AdminLogin() {
       toast.success('Access granted');
       navigate('/admin/dashboard');
     } catch (error: any) {
-      toast.error('Login failed. Please try again.');
+      console.error('Login error:', error);
+      toast.error('System error. Please try again.');
     } finally {
       setLoading(false);
     }
