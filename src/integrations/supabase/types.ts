@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      push_campaigns: {
+        Row: {
+          admin_user_id: string
+          body: string
+          created_at: string | null
+          id: string
+          target_criteria: Json | null
+          title: string
+        }
+        Insert: {
+          admin_user_id: string
+          body: string
+          created_at?: string | null
+          id?: string
+          target_criteria?: Json | null
+          title: string
+        }
+        Update: {
+          admin_user_id?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+          target_criteria?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
       push_notification_logs: {
         Row: {
           clicked_at: string | null
@@ -148,9 +175,42 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          created_at: string | null
+          fcm_token: string
+          id: string
+          platform: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fcm_token: string
+          id?: string
+          platform?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fcm_token?: string
+          id?: string
+          platform?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           amount_given: number | null
+          confirmed_at: string | null
           created_at: string | null
           date: string | null
           id: string
@@ -158,9 +218,11 @@ export type Database = {
           manually_credited: boolean | null
           new_user_id: string
           referrer_id: string
+          status: string | null
         }
         Insert: {
           amount_given?: number | null
+          confirmed_at?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
@@ -168,9 +230,11 @@ export type Database = {
           manually_credited?: boolean | null
           new_user_id: string
           referrer_id: string
+          status?: string | null
         }
         Update: {
           amount_given?: number | null
+          confirmed_at?: string | null
           created_at?: string | null
           date?: string | null
           id?: string
@@ -178,6 +242,7 @@ export type Database = {
           manually_credited?: boolean | null
           new_user_id?: string
           referrer_id?: string
+          status?: string | null
         }
         Relationships: [
           {
@@ -480,6 +545,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_referral: {
+        Args: { _amount?: number; _new_user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
