@@ -19,6 +19,7 @@ import Profile from "./pages/Profile";
 import SuccessPage from "./pages/SuccessPage";
 import ReferEarn from "./pages/ReferEarn";
 import Receipt from "./pages/Receipt";
+import AdminReferrals from "./pages/AdminReferrals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ const App = () => {
               <Route path="/profile" element={<Profile />} />
               <Route path="/success" element={<SuccessPage />} />
               <Route path="/refer-earn" element={<ReferEarn />} />
+              <Route path="/admin/referrals" element={<AdminReferrals />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
