@@ -1,72 +1,141 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Navigate } from 'react-router-dom';
 import adminLogo from '@/assets/admin-logo.png';
 
-const ADMIN_PHONE = '08109375382';
-
 export default function AdminLogin() {
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
 
-  const isAdminAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
-  if (isAdminAuthenticated) {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
+  const checkAuth = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
 
-  const handleLogin = (e: React.FormEvent) => {
+        if (roleData) {
+          navigate('/admin/dashboard', { replace: true });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const trimmedPhone = phoneNumber.trim();
-    
-    if (trimmedPhone !== ADMIN_PHONE) {
-      toast.error('Invalid access number. Access denied.');
+
+    if (!email || !password) {
+      toast.error('Please enter email and password');
       return;
     }
 
     setLoading(true);
-    sessionStorage.setItem('admin_auth', 'true');
-    toast.success('Access granted');
-    
-    setTimeout(() => {
+    try {
+      // Sign in with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Check if user has admin role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authData.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (roleError) throw roleError;
+
+      if (!roleData) {
+        await supabase.auth.signOut();
+        toast.error('Access denied. Admin privileges required.');
+        return;
+      }
+
+      toast.success('Login successful');
       navigate('/admin/dashboard');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error(error.message || 'Login failed');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <img src={adminLogo} alt="RedPay Admin" className="h-16 mx-auto mb-4" />
-          <CardTitle className="text-2xl">Admin Access</CardTitle>
+          <CardTitle className="text-2xl">Admin Login</CardTitle>
           <CardDescription>
-            Enter your access number to continue
+            Enter your credentials to access the admin panel
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Access Number</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="phoneNumber"
-                type="text"
-                placeholder="Enter access number"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="admin@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                maxLength={11}
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Verifying...' : 'Access Admin'}
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
         </CardContent>
