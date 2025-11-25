@@ -21,6 +21,7 @@ import ReferEarn from "./pages/ReferEarn";
 import Receipt from "./pages/Receipt";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminRegister from "./pages/admin/AdminRegister";
 import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminReferrals from "./pages/admin/AdminReferrals";
@@ -58,6 +59,7 @@ const App = () => {
               <Route path="/refer-earn" element={<ReferEarn />} />
               
               {/* Admin Routes */}
+              <Route path="/admin/register" element={<AdminRegister />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route path="dashboard" element={<AdminDashboard />} />

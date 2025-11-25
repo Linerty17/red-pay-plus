@@ -59,7 +59,22 @@ export default function AdminLogin() {
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // Provide specific error messages
+        if (authError.message.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password. Check your credentials and try again.');
+        } else if (authError.message.includes('Email not confirmed')) {
+          toast.error('Please confirm your email address first.');
+        } else {
+          toast.error(authError.message);
+        }
+        return;
+      }
+
+      if (!authData.user) {
+        toast.error('Login failed. Please try again.');
+        return;
+      }
 
       // Check if user has admin role
       const { data: roleData, error: roleError } = await supabase
@@ -69,7 +84,12 @@ export default function AdminLogin() {
         .eq('role', 'admin')
         .maybeSingle();
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error('Role check error:', roleError);
+        toast.error('Error checking admin privileges');
+        await supabase.auth.signOut();
+        return;
+      }
 
       if (!roleData) {
         await supabase.auth.signOut();
@@ -81,7 +101,7 @@ export default function AdminLogin() {
       navigate('/admin/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error(error.message || 'Login failed');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -137,6 +157,9 @@ export default function AdminLogin() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
             </Button>
+            <div className="text-center text-sm text-muted-foreground">
+              First time? <a href="/admin/register" className="text-primary hover:underline">Create account</a>
+            </div>
           </form>
         </CardContent>
       </Card>
