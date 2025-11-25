@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Search, Filter, CheckCircle, AlertCircle, Download, TrendingUp } from "lucide-react";
+import { Search, Filter, CheckCircle, AlertCircle, Download, TrendingUp, UserCog } from "lucide-react";
 
 export default function AdminReferrals() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,6 +94,26 @@ export default function AdminReferrals() {
     }
     return <Badge variant="outline" className="border-muted-foreground/30"><AlertCircle className="w-3 h-3 mr-1" />Pending</Badge>;
   };
+
+  const impersonateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          admin_user_id: user.id,
+          action_type: "user_impersonation",
+          target_user_id: userId,
+          details: { timestamp: new Date().toISOString() },
+        });
+      }
+      // Store impersonation data in sessionStorage
+      sessionStorage.setItem("impersonating", userId);
+      window.location.href = "/dashboard";
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to impersonate user");
+    },
+  });
 
   const exportToCSV = () => {
     if (!referrals || referrals.length === 0) {
@@ -213,7 +233,7 @@ export default function AdminReferrals() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Notes</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -259,56 +279,67 @@ export default function AdminReferrals() {
                           {referral.manual_credit_notes || "-"}
                         </TableCell>
                         <TableCell>
-                          {!referral.amount_given && !referral.manually_credited && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setSelectedReferral(referral)}
-                                >
-                                  Credit
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Manual Credit Referral</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label>Referrer</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                      {referral.referrer?.first_name} {referral.referrer?.last_name} ({referral.referrer?.email})
-                                    </p>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>New User</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                      {referral.new_user?.first_name} {referral.new_user?.last_name} ({referral.new_user?.email})
-                                    </p>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="notes">Credit Notes *</Label>
-                                    <Textarea
-                                      id="notes"
-                                      placeholder="Explain why this referral is being manually credited..."
-                                      value={creditNotes}
-                                      onChange={(e) => setCreditNotes(e.target.value)}
-                                      rows={4}
-                                    />
-                                  </div>
-                                </div>
-                                <DialogFooter>
+                          <div className="flex gap-2">
+                            {!referral.amount_given && !referral.manually_credited && (
+                              <Dialog>
+                                <DialogTrigger asChild>
                                   <Button
-                                    onClick={handleManualCredit}
-                                    disabled={manualCreditMutation.isPending || !creditNotes.trim()}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedReferral(referral)}
                                   >
-                                    {manualCreditMutation.isPending ? "Processing..." : "Credit ₦5,000"}
+                                    Credit
                                   </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-                          )}
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Manual Credit Referral</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                      <Label>Referrer</Label>
+                                      <p className="text-sm text-muted-foreground">
+                                        {referral.referrer?.first_name} {referral.referrer?.last_name} ({referral.referrer?.email})
+                                      </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>New User</Label>
+                                      <p className="text-sm text-muted-foreground">
+                                        {referral.new_user?.first_name} {referral.new_user?.last_name} ({referral.new_user?.email})
+                                      </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="notes">Credit Notes *</Label>
+                                      <Textarea
+                                        id="notes"
+                                        placeholder="Explain why this referral is being manually credited..."
+                                        value={creditNotes}
+                                        onChange={(e) => setCreditNotes(e.target.value)}
+                                        rows={4}
+                                      />
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <Button
+                                      onClick={handleManualCredit}
+                                      disabled={manualCreditMutation.isPending || !creditNotes.trim()}
+                                    >
+                                      {manualCreditMutation.isPending ? "Processing..." : "Credit ₦5,000"}
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => impersonateMutation.mutate(referral.referrer_id)}
+                              className="gap-1"
+                              title="Impersonate referrer"
+                            >
+                              <UserCog className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

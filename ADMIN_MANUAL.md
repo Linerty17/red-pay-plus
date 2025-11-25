@@ -15,6 +15,16 @@
 
 ---
 
+## Admin URLs
+
+- **Main Admin Panel**: https://redpay2026.netlify.app/admin/referrals
+- **Payment Management**: https://redpay2026.netlify.app/admin/payments
+- **Push Notifications**: https://redpay2026.netlify.app/admin/push-notifications
+
+All admin routes require authentication and admin role. After signing up with the admin email, you'll automatically be assigned the admin role.
+
+---
+
 ## Features Overview
 
 ### 1. Referral Management (`/admin/referrals`)
@@ -40,6 +50,12 @@
    - Increment referral_count
    - Create transaction record
    - Log the action in audit_logs
+
+**Impersonate User**
+- Click the user icon (👤) next to any referrer to impersonate them
+- Opens the app as that user for debugging purposes
+- All impersonations are logged in audit_logs
+- To stop impersonating, clear session storage and refresh
 
 **Export Data**
 - Click "Export CSV" button to download all referrals
@@ -136,6 +152,41 @@ All admin actions are automatically logged:
 - Admin endpoints use service role keys
 - All database operations are secure and audited
 - Users cannot access admin data through client API
+
+---
+
+## Verification Tests
+
+### Test 1: Referral Credit Flow
+1. Create a test user with referral code (e.g., REF794833)
+2. Have a new user sign up with `?ref=REF794833`
+3. Check admin panel: referral_count should increment by 1
+4. Check user balance: should increase by ₦5,000
+5. Verify transaction created in transactions table
+
+### Test 2: Manual Credit
+1. Navigate to `/admin/referrals`
+2. Find a pending referral
+3. Click "Credit" button
+4. Add admin notes explaining reason
+5. Confirm credit processed
+6. Verify audit_logs entry created
+7. Check user balance updated
+
+### Test 3: Push Notification
+1. Navigate to `/admin/push-notifications`
+2. Create a test notification
+3. Use "Send Test" to send to your admin account
+4. Check delivery logs for status
+5. Verify notification received (if FCM/APNs configured)
+
+### Test 4: Payment Review
+1. Navigate to `/admin/payments`
+2. Find a pending payment submission
+3. Review uploaded receipt
+4. Add admin notes
+5. Confirm or reject payment
+6. Verify audit log created
 
 ---
 
