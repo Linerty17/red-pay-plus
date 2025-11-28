@@ -15,6 +15,9 @@ import { supabase } from "@/integrations/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { z } from "zod";
 
+// Hidden access code
+const VALID_ACCESS_CODE = "RPC6611771";
+
 const broadcastSchema = z.object({
   phoneNumber: z.string().trim()
     .regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number format'),
@@ -22,8 +25,7 @@ const broadcastSchema = z.object({
     .regex(/^[0-9]+$/, 'Amount must be a number')
     .refine((val) => parseInt(val) >= 50, 'Minimum purchase is ₦50')
     .refine((val) => parseInt(val) <= 100000, 'Maximum purchase is ₦100,000'),
-  rpcCode: z.string().trim()
-    .regex(/^RPC[0-9]+$/, 'Invalid RPC code format')
+  accessCode: z.string().trim().min(1, 'Access code is required')
 });
 
 const Broadcast = () => {
@@ -32,7 +34,7 @@ const Broadcast = () => {
   const [isAirtime, setIsAirtime] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
-  const [rpcCode, setRpcCode] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handlePurchase = async () => {
@@ -45,7 +47,7 @@ const Broadcast = () => {
     const validation = broadcastSchema.safeParse({
       phoneNumber,
       amount,
-      rpcCode
+      accessCode
     });
     
     if (!validation.success) {
@@ -54,16 +56,10 @@ const Broadcast = () => {
       return;
     }
 
-    // Validate RPC code against database
-    const { data: rpcPurchase } = await supabase
-      .from('rpc_purchases')
-      .select('rpc_code_issued, verified')
-      .eq('user_id', profile.user_id)
-      .eq('verified', true)
-      .single();
-
-    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== rpcCode) {
-      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
+    // Validate access code against hardcoded value
+    if (accessCode !== VALID_ACCESS_CODE) {
+      toast.error("Invalid Access Code. Please purchase an access code to proceed.");
+      navigate("/buy-rpc");
       return;
     }
 
@@ -236,16 +232,16 @@ const Broadcast = () => {
             </div>
 
               <div className="space-y-2">
-                <Label htmlFor="rpcCode">RPC Code</Label>
+                <Label htmlFor="accessCode">Enter Access Code</Label>
                 <Input
-                  id="rpcCode"
+                  id="accessCode"
                   type="password"
                   placeholder="••••••••"
-                  value={rpcCode}
-                  onChange={(e) => setRpcCode(e.target.value.toUpperCase())}
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                   className="bg-background/50"
                 />
-                <p className="text-xs text-destructive">⚠️ RPC code is required to proceed</p>
+                <p className="text-xs text-destructive">⚠️ Access code is required to proceed</p>
               </div>
 
               <Button

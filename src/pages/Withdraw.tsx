@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +9,14 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { DollarSign, Check } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+
+// Hidden access code
+const VALID_ACCESS_CODE = "RPC6611771";
 
 const withdrawSchema = z.object({
   accountNumber: z.string().trim()
@@ -26,8 +29,7 @@ const withdrawSchema = z.object({
     .regex(/^[0-9]+$/, 'Amount must be a number')
     .refine((val) => parseInt(val) >= 1000, 'Minimum withdrawal is ₦1,000')
     .refine((val) => parseInt(val) <= 10000000, 'Maximum withdrawal is ₦10,000,000'),
-  rpcCode: z.string().trim()
-    .regex(/^RPC[0-9]+$/, 'Invalid RPC code format')
+  accessCode: z.string().trim().min(1, 'Access code is required')
 });
 
 const Withdraw = () => {
@@ -38,7 +40,7 @@ const Withdraw = () => {
     accountName: "",
     bank: "",
     amount: "",
-    rpcCode: "",
+    accessCode: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -62,16 +64,10 @@ const Withdraw = () => {
       return;
     }
 
-    // Validate RPC code against database
-    const { data: rpcPurchase } = await supabase
-      .from('rpc_purchases')
-      .select('rpc_code_issued, verified')
-      .eq('user_id', profile.user_id)
-      .eq('verified', true)
-      .single();
-
-    if (!rpcPurchase || rpcPurchase.rpc_code_issued !== formData.rpcCode) {
-      toast.error("Invalid or unverified RPC Code. Please purchase RPC first.");
+    // Validate access code against hardcoded value
+    if (formData.accessCode !== VALID_ACCESS_CODE) {
+      toast.error("Invalid Access Code. Please purchase an access code to proceed.");
+      navigate("/buy-rpc");
       return;
     }
 
@@ -239,18 +235,18 @@ const Withdraw = () => {
                 <p className="text-xs text-muted-foreground">Minimum: ₦1,000</p>
               </div>
 
-              {/* RPC Code */}
+              {/* Access Code */}
               <div className="space-y-1">
-                <Label htmlFor="rpcCode" className="text-xs">Enter RPC Code</Label>
+                <Label htmlFor="accessCode" className="text-xs">Enter Access Code</Label>
                 <Input
-                  id="rpcCode"
+                  id="accessCode"
                   type="password"
                   placeholder="••••••••"
-                  value={formData.rpcCode}
-                  onChange={(e) => setFormData({ ...formData, rpcCode: e.target.value.toUpperCase() })}
+                  value={formData.accessCode}
+                  onChange={(e) => setFormData({ ...formData, accessCode: e.target.value.toUpperCase() })}
                   className="h-9"
                 />
-                <p className="text-xs text-destructive">⚠️ RPC code is required for withdrawal</p>
+                <p className="text-xs text-destructive">⚠️ Access code is required for withdrawal</p>
               </div>
             </div>
 
