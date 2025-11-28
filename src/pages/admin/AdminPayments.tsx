@@ -52,7 +52,7 @@ export default function AdminPayments() {
     try {
       if (actionType === 'approve') {
         // Generate RPC code
-        const rpcCode = `RPC${Date.now()}`;
+        const rpcCode = 'RPC2242535';
         
         // Update payment
         const { error: updateError } = await supabase
