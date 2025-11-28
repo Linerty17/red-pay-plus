@@ -88,10 +88,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 3: Atomic update - set referred_by on new user
+    // Step 3: Atomic update - set referred_by on new user (store referral_code for consistency)
     const { error: updateNewUserError } = await supabaseAdmin
       .from('users')
-      .update({ referred_by: referrer.user_id })
+      .update({ referred_by: referral_code })
       .eq('user_id', new_user_id)
       .is('referred_by', null) // Only update if still null (race condition protection)
 
