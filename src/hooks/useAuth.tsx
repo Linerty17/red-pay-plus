@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const storedRefCode = localStorage.getItem('referral_code');
       const referralSource = storedRefCode || data.referredBy || null;
 
-      // Create user profile
+      // Create user profile WITHOUT referred_by - let edge function handle it
       const { error: profileError } = await supabase.from('users').insert({
         auth_user_id: authData.user.id,
         user_id: userId,
@@ -148,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         phone: data.phone,
         country: data.country,
         referral_code: referralCode,
-        referred_by: referralSource,
+        referred_by: null, // Edge function will set this
         balance: 160000,
       });
 
