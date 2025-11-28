@@ -232,7 +232,7 @@ const Broadcast = () => {
             </div>
 
               <div className="space-y-2">
-                <Label htmlFor="accessCode">Enter Access Code</Label>
+                <Label htmlFor="accessCode">Enter RPC Code</Label>
                 <Input
                   id="accessCode"
                   type="password"

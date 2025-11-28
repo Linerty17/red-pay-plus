@@ -237,7 +237,7 @@ const Withdraw = () => {
 
               {/* Access Code */}
               <div className="space-y-1">
-                <Label htmlFor="accessCode" className="text-xs">Enter Access Code</Label>
+                <Label htmlFor="accessCode" className="text-xs">Enter RPC Code</Label>
                 <Input
                   id="accessCode"
                   type="password"
