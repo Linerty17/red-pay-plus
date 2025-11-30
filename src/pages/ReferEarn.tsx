@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
@@ -7,34 +7,29 @@ import ProfileButton from "@/components/ProfileButton";
 import { Copy, Users, Gift, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 
 const ReferEarn = () => {
-  const { profile } = useAuth();
-  const [referralCount, setReferralCount] = useState(0);
-  const [referralEarnings, setReferralEarnings] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { profile, refreshProfile } = useAuth();
 
+  // Use profile.referral_count directly - it's updated by the edge function
+  const referralCount = profile?.referral_count || 0;
+  const referralEarnings = referralCount * 5000;
+
+  // Refresh profile data when page loads to ensure latest count
   useEffect(() => {
-    const fetchReferralData = async () => {
-      if (!profile) return;
+    if (profile) {
+      refreshProfile();
+    }
+  }, []);
 
-      // Get referral count
-      const { count, error: countError } = await supabase
-        .from('referrals')
-        .select('*', { count: 'exact', head: true })
-        .eq('referrer_id', profile.user_id);
-
-      if (!countError && count !== null) {
-        setReferralCount(count);
-        setReferralEarnings(count * 5000);
-      }
-
-      setLoading(false);
-    };
-
-    fetchReferralData();
-  }, [profile]);
+  if (!profile) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="text-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -62,7 +57,7 @@ const ReferEarn = () => {
     }
   };
 
-  if (!profile || loading) {
+  if (!profile) {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
