@@ -14,6 +14,8 @@ import {
   History as HistoryIcon,
   HeadphonesIcon,
   Send,
+  X,
+  MessageCircle,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -24,6 +26,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const TELEGRAM_CHANNEL_URL = "https://t.me/+lYQ8nKobnddlMGU8";
+
 const Dashboard = () => {
   const { profile, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +37,7 @@ const Dashboard = () => {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [showTelegramBanner, setShowTelegramBanner] = useState(true);
 
   useEffect(() => {
     if (profile?.last_claim_at) {
@@ -247,6 +252,44 @@ const Dashboard = () => {
         <Logo />
         <ProfileButton />
       </header>
+
+      {/* Telegram Banner */}
+      {showTelegramBanner && (
+        <div className="relative z-10 px-3 pt-3 max-w-4xl mx-auto animate-fade-in">
+          <Card className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border-primary/30 backdrop-blur-sm">
+            <CardContent className="p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Join Our Telegram Channel</p>
+                  <p className="text-xs text-muted-foreground truncate">Get updates, news & exclusive offers!</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={TELEGRAM_CHANNEL_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs px-3">
+                    Join Now
+                  </Button>
+                </a>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  onClick={() => setShowTelegramBanner(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="relative z-10 px-3 py-3 max-w-4xl mx-auto space-y-3">
