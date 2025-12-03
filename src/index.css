@@ -208,6 +208,21 @@ All colors MUST be HSL.
     animation: float-subtle 4s ease-in-out infinite;
   }
 
+  .float-element-slow {
+    animation: float-subtle 6s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+
+  .float-element-fast {
+    animation: float-subtle 3s ease-in-out infinite;
+    animation-delay: 0.2s;
+  }
+
+  .float-element-delayed {
+    animation: float-subtle 5s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
   @keyframes float-subtle {
     0%, 100% {
       transform: translateY(0) scale(1);
