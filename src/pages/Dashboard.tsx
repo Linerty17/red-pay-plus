@@ -14,7 +14,6 @@ import {
   History as HistoryIcon,
   HeadphonesIcon,
   Send,
-  X,
   MessageCircle,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -253,37 +252,38 @@ const Dashboard = () => {
         <ProfileButton />
       </header>
 
-      {/* Telegram Banner */}
+      {/* Telegram Notification Overlay */}
       {showTelegramBanner && (
-        <div className="relative z-10 px-3 pt-3 max-w-4xl mx-auto animate-fade-in">
-          <Card className="bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border-primary/30 backdrop-blur-sm">
-            <CardContent className="p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Join Our Telegram Channel</p>
-                  <p className="text-xs text-muted-foreground truncate">Get updates, news & exclusive offers!</p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+          <Card className="mx-4 max-w-sm w-full bg-card border-primary/50 shadow-glow animate-float">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto animate-pulse">
+                <MessageCircle className="w-8 h-8 text-primary-foreground" />
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-foreground">Join Our Telegram Channel</h3>
+                <p className="text-sm text-muted-foreground">
+                  Stay updated with the latest news, exclusive offers, and announcements from RedPay!
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
                 <a
                   href={TELEGRAM_CHANNEL_URL}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="w-full"
                 >
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs px-3">
-                    Join Now
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Join Telegram Channel
                   </Button>
                 </a>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  className="w-full text-muted-foreground hover:text-foreground"
                   onClick={() => setShowTelegramBanner(false)}
                 >
-                  <X className="w-4 h-4" />
+                  Maybe Later
                 </Button>
               </div>
             </CardContent>
