@@ -150,7 +150,7 @@ const Broadcast = () => {
           <p className="text-muted-foreground">Purchase airtime or data</p>
         </div>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
           <CardContent className="p-8 space-y-6">
             {/* Balance Display */}
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">

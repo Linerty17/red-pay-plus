@@ -68,7 +68,7 @@ const History = () => {
           <p className="text-muted-foreground">View all your recent transactions</p>
         </div>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
           <CardContent className="p-6">
             {loading ? (
               <p className="text-center text-muted-foreground py-8">Loading...</p>
