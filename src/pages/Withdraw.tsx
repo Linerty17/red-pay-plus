@@ -158,7 +158,7 @@ const Withdraw = () => {
           <p className="text-sm text-muted-foreground">Transfer money to your bank account</p>
         </div>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-slow">
           <CardContent className="p-4 space-y-4">
             {/* Balance Display */}
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">

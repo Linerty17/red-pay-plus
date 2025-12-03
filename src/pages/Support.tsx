@@ -76,7 +76,7 @@ const Support = () => {
           </Card>
 
           {/* WhatsApp Support */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element-slow">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto">
                 <MessageCircle className="w-8 h-8 text-white" />
@@ -97,7 +97,7 @@ const Support = () => {
           </Card>
 
           {/* Email Support */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element-delayed">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto">
                 <Mail className="w-8 h-8 text-white" />
@@ -119,7 +119,7 @@ const Support = () => {
         </div>
 
         {/* Additional Info */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-slow">
           <CardContent className="p-6">
             <h3 className="font-bold text-foreground mb-3">Support Hours</h3>
             <p className="text-muted-foreground mb-2">

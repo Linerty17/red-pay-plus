@@ -92,7 +92,7 @@ const ReferEarn = () => {
               <p className="text-sm text-muted-foreground">Total Referrals</p>
             </CardContent>
           </Card>
-          <Card className="bg-card/60 backdrop-blur-sm border-border float-element">
+          <Card className="bg-card/60 backdrop-blur-sm border-border float-element-delayed">
             <CardContent className="p-4 text-center">
               <Gift className="w-8 h-8 text-success mx-auto mb-2" />
               <p className="text-2xl font-bold text-success">₦{referralEarnings.toLocaleString()}</p>
@@ -118,7 +118,7 @@ const ReferEarn = () => {
         </Card>
 
         {/* Referral Code */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-slow">
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -174,7 +174,7 @@ const ReferEarn = () => {
         </Card>
 
         {/* How it Works */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-fast">
           <CardContent className="p-4 space-y-3">
             <h3 className="font-semibold text-foreground">How It Works</h3>
             <div className="space-y-3">

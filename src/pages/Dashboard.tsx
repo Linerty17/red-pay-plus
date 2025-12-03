@@ -350,7 +350,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Advert 1 */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-slow">
           <CardContent className="p-0">
             <img src={advert1} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
           </CardContent>
@@ -380,7 +380,7 @@ const Dashboard = () => {
         </div>
 
         {/* Advert 2 */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-delayed">
           <CardContent className="p-0">
             <img src={advert2} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
           </CardContent>
