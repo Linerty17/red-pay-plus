@@ -307,7 +307,7 @@ const Dashboard = () => {
         </div>
 
         {/* Balance Card */}
-        <Card className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-primary shadow-glow animate-fade-in">
+        <Card className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-primary shadow-glow animate-fade-in float-element">
           <CardContent className="pt-4 pb-4 px-4 space-y-3">
             <div className="flex items-center gap-2 text-primary-foreground/80">
               <Wallet className="w-4 h-4" />

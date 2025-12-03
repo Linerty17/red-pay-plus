@@ -129,7 +129,7 @@ const BuyRPC = () => {
           <p className="text-sm text-muted-foreground">Purchase RedPay Credits</p>
         </div>
 
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
           <CardContent className="p-4 space-y-4">
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground">Amount</p>

@@ -90,7 +90,7 @@ const Welcome = () => {
       )}
 
       <div className="w-full max-w-lg relative z-20 animate-scale-in">
-        <Card className="bg-card/90 backdrop-blur-sm border-border shadow-elevated">
+        <Card className="bg-card/90 backdrop-blur-sm border-border shadow-elevated animate-float">
           <CardContent className="pt-12 pb-12 px-6 space-y-8">
             {/* Celebration Icon */}
             <div className="flex justify-center">

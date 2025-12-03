@@ -143,7 +143,7 @@ const Profile = () => {
         </div>
 
         {/* Profile Information */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
           <CardContent className="p-4 space-y-3">
             {profileFields.map((field, index) => (
               <div

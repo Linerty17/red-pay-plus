@@ -35,7 +35,7 @@ const Community = () => {
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* WhatsApp */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
             <CardContent className="p-8 text-center space-y-6">
               <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center mx-auto">
                 <MessageCircle className="w-10 h-10 text-white" />
@@ -58,7 +58,7 @@ const Community = () => {
           </Card>
 
           {/* Telegram */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
             <CardContent className="p-8 text-center space-y-6">
               <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
                 <Send className="w-10 h-10 text-white" />

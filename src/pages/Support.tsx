@@ -55,7 +55,7 @@ const Support = () => {
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Telegram Support */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
                 <Send className="w-8 h-8 text-white" />
@@ -76,7 +76,7 @@ const Support = () => {
           </Card>
 
           {/* WhatsApp Support */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto">
                 <MessageCircle className="w-8 h-8 text-white" />
@@ -97,7 +97,7 @@ const Support = () => {
           </Card>
 
           {/* Email Support */}
-          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift">
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in hover-lift float-element">
             <CardContent className="p-6 text-center space-y-4">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto">
                 <Mail className="w-8 h-8 text-white" />

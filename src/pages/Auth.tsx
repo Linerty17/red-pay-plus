@@ -183,7 +183,7 @@ const Auth = () => {
           </Card>
         )}
 
-        <Card className="bg-card/90 backdrop-blur-sm border-border shadow-elevated">
+        <Card className="bg-card/90 backdrop-blur-sm border-border shadow-elevated float-element">
           <CardHeader>
             <CardTitle className="text-foreground">Get Started</CardTitle>
             <CardDescription>Create an account or sign in to continue</CardDescription>

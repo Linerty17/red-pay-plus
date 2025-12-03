@@ -85,14 +85,14 @@ const ReferEarn = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 animate-fade-in">
-          <Card className="bg-card/60 backdrop-blur-sm border-border">
+          <Card className="bg-card/60 backdrop-blur-sm border-border float-element">
             <CardContent className="p-4 text-center">
               <Users className="w-8 h-8 text-primary mx-auto mb-2" />
               <p className="text-2xl font-bold text-foreground">{referralCount}</p>
               <p className="text-sm text-muted-foreground">Total Referrals</p>
             </CardContent>
           </Card>
-          <Card className="bg-card/60 backdrop-blur-sm border-border">
+          <Card className="bg-card/60 backdrop-blur-sm border-border float-element">
             <CardContent className="p-4 text-center">
               <Gift className="w-8 h-8 text-success mx-auto mb-2" />
               <p className="text-2xl font-bold text-success">₦{referralEarnings.toLocaleString()}</p>
