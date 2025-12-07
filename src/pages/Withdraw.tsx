@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 // Hidden access code
-const VALID_ACCESS_CODE = "RPC6611771";
+const VALID_ACCESS_CODE = "RPC6776677";
 
 const withdrawSchema = z.object({
   accountNumber: z.string().trim()
