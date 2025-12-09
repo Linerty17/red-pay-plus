@@ -20,6 +20,138 @@ import { z } from "zod";
 import { UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// EmailDriver API helper
+const sendEmailNotification = async (
+  email: string,
+  subject: string,
+  message: string
+) => {
+  try {
+    await fetch("https://epxcpmbtgcltbjohniff.supabase.co/functions/v1/EmailDriver", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: "liberty-developer",
+        sender_name: "REDPAY LIMITED",
+        email,
+        subject,
+        message,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send email notification:", error);
+  }
+};
+
+// Get user IP address
+const getUserIP = async (): Promise<string> => {
+  try {
+    const response = await fetch("https://api.ipify.org?format=json");
+    const data = await response.json();
+    return data.ip || "Unknown";
+  } catch {
+    return "Unknown";
+  }
+};
+
+// Email templates with REDPAY branding
+const getSignupEmailTemplate = (firstName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; margin: 0 auto; background-color: #ffffff;">
+    <tr>
+      <td style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: bold;">REDPAY</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 18px;">Welcome to REDPAY, ${firstName}!</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+          Your account has been successfully created. You can now enjoy seamless payments and exclusive features.
+        </p>
+        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 16px 0;">
+          <p style="color: #991b1b; font-size: 13px; margin: 0;">
+            <strong>Security Tip:</strong> Never share your login credentials with anyone.
+          </p>
+        </div>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
+          If you have any questions, our support team is here to help.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 11px; margin: 0;">
+          © ${new Date().getFullYear()} REDPAY LIMITED. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+const getLoginEmailTemplate = (ipAddress: string, loginDateTime: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; margin: 0 auto; background-color: #ffffff;">
+    <tr>
+      <td style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: bold;">REDPAY</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 18px;">Login Detected</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+          Your REDPAY account was accessed successfully. Here are the login details:
+        </p>
+        <table width="100%" style="background-color: #f9fafb; border-radius: 8px; margin: 16px 0;">
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 12px;">IP Address</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">${ipAddress}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px;">
+              <span style="color: #6b7280; font-size: 12px;">Date & Time</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">${loginDateTime}</span>
+            </td>
+          </tr>
+        </table>
+        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 16px 0;">
+          <p style="color: #991b1b; font-size: 13px; margin: 0;">
+            <strong>Not you?</strong> If you didn't initiate this login, please secure your account immediately.
+          </p>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 11px; margin: 0;">
+          © ${new Date().getFullYear()} REDPAY LIMITED. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
 const signUpSchema = z.object({
   firstName: z.string().trim()
     .min(2, 'First name must be at least 2 characters').max(50, 'First name too long')
@@ -114,6 +246,12 @@ const Auth = () => {
     if (error) {
       toast.error(error.message || "Failed to create account");
     } else {
+      // Send welcome email notification
+      sendEmailNotification(
+        signUpData.email,
+        "Account Created Successfully",
+        getSignupEmailTemplate(signUpData.firstName)
+      );
       toast.success("Account created successfully!");
       navigate(`/welcome?firstName=${signUpData.firstName}`);
     }
@@ -145,6 +283,22 @@ const Auth = () => {
     if (error) {
       toast.error(error.message || "Failed to sign in");
     } else {
+      // Send login alert email notification
+      const ipAddress = await getUserIP();
+      const loginDateTime = new Date().toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+      sendEmailNotification(
+        signInData.email,
+        "Login Alert",
+        getLoginEmailTemplate(ipAddress, loginDateTime)
+      );
       toast.success("Welcome back!");
       navigate("/dashboard");
     }
