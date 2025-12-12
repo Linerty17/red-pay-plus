@@ -19,8 +19,8 @@ const PaymentInstructions = () => {
   const [showFailure, setShowFailure] = useState(false);
 
   const amount = "6,700";
-  const accountNumber = "6108663853";
-  const bankName = "Opay Bank";
+  const accountNumber = "2079127035";
+  const bankName = "Kuda Bank";
   const accountName = "CHINEMEREM LIBERTY SUNDAY";
   const referenceId = `REF${Date.now()}`;
 
