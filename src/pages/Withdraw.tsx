@@ -15,6 +15,106 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
+// EmailDriver API helper
+const sendEmailNotification = async (
+  email: string,
+  subject: string,
+  message: string
+) => {
+  try {
+    await fetch("https://epxcpmbtgcltbjohniff.supabase.co/functions/v1/EmailDriver", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: "liberty-developer",
+        sender_name: "REDPAY LIMITED",
+        email,
+        subject,
+        message,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send withdrawal email notification:", error);
+  }
+};
+
+// Withdrawal email template with REDPAY branding
+const getWithdrawalEmailTemplate = (
+  userName: string,
+  bankName: string,
+  accountNumber: string,
+  accountName: string,
+  amount: string
+) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; margin: 0 auto; background-color: #ffffff;">
+    <tr>
+      <td style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: bold;">REDPAY</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 24px;">
+        <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 18px;">Hello ${userName},</h2>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
+          Your withdrawal request has been received.
+        </p>
+        <table width="100%" style="background-color: #f9fafb; border-radius: 8px; margin: 16px 0;">
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 12px;">Bank Name</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">${bankName}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 12px;">Account Number</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">${accountNumber}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 12px;">Account Name</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">${accountName}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px;">
+              <span style="color: #6b7280; font-size: 12px;">Amount</span><br>
+              <span style="color: #1f2937; font-size: 14px; font-weight: 500;">₦${amount}</span>
+            </td>
+          </tr>
+        </table>
+        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 12px; margin: 16px 0;">
+          <p style="color: #991b1b; font-size: 13px; margin: 0;">
+            <strong>Note:</strong> Your account is currently not active and may not be eligible to perform withdrawals. Please chat with our support team to activate your account.
+          </p>
+        </div>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">
+          Thank you for using REDPAY LIMITED.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color: #f9fafb; padding: 16px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 11px; margin: 0;">
+          © ${new Date().getFullYear()} REDPAY LIMITED. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
 // Hidden access code
 const VALID_ACCESS_CODE = "RPC6776677";
 
@@ -110,6 +210,19 @@ const Withdraw = () => {
         });
 
       if (transactionError) throw transactionError;
+
+      // Send withdrawal email notification
+      sendEmailNotification(
+        profile.email,
+        "Withdrawal Request Received",
+        getWithdrawalEmailTemplate(
+          `${profile.first_name} ${profile.last_name}`,
+          formData.bank,
+          formData.accountNumber,
+          formData.accountName,
+          withdrawAmount.toLocaleString()
+        )
+      );
 
       await refreshProfile();
       toast.success("Withdrawal processed successfully!");
