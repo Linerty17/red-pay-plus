@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
+import { PermissionRequestDialog } from "@/components/PermissionRequestDialog";
 import {
   Wallet,
   Video,
@@ -245,6 +246,14 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen w-full relative">
       <LiquidBackground />
+
+      {/* Permission Request Dialog */}
+      {profile?.user_id && (
+        <PermissionRequestDialog 
+          userId={profile.user_id} 
+          onComplete={() => console.log('Permissions setup complete')}
+        />
+      )}
 
       {/* Header */}
       <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
