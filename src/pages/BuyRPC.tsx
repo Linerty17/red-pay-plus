@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PaymentNoticeDialog from "@/components/PaymentNoticeDialog";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";
@@ -25,6 +25,9 @@ const buyRPCSchema = z.object({
 
 const BuyRPC = () => {
   const { profile } = useAuth();
+  const location = useLocation();
+  const invalidCode = location.state?.invalidCode;
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -128,6 +131,24 @@ const BuyRPC = () => {
           <h1 className="text-2xl font-bold text-foreground">Buy RPC</h1>
           <p className="text-sm text-muted-foreground">Purchase RedPay Credits</p>
         </div>
+
+        {/* Invalid Code Warning Banner */}
+        {invalidCode && (
+          <Card className="bg-destructive/10 border-destructive/30 animate-fade-in">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-destructive shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-destructive">Invalid RPC Code!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    The access code you entered is incorrect or you don't have one yet. 
+                    Please purchase an RPC Code below to access withdrawal and broadcast features.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-fast">
           <CardContent className="p-4 space-y-4">
