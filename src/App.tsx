@@ -20,6 +20,7 @@ import Profile from "./pages/Profile";
 import SuccessPage from "./pages/SuccessPage";
 import ReferEarn from "./pages/ReferEarn";
 import Receipt from "./pages/Receipt";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminRegister from "./pages/admin/AdminRegister";
@@ -62,6 +63,7 @@ const App = () => {
               <Route path="/profile" element={<Profile />} />
               <Route path="/success" element={<SuccessPage />} />
               <Route path="/refer-earn" element={<ReferEarn />} />
+              <Route path="/notifications" element={<Notifications />} />
               
               {/* Admin Routes */}
               <Route path="/admin/register" element={<AdminRegister />} />

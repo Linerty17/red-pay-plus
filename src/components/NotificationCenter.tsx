@@ -165,17 +165,29 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b">
           <h4 className="font-semibold">Notifications</h4>
-          {unreadCount > 0 && (
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={markAllAsRead}
+                className="text-xs h-auto py-1"
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={markAllAsRead}
-              className="text-xs h-auto py-1"
+              onClick={() => {
+                setOpen(false);
+                navigate('/notifications');
+              }}
             >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
+              View all
             </Button>
-          )}
+          </div>
         </div>
         <ScrollArea className="h-[300px]">
           {notifications.length === 0 ? (
