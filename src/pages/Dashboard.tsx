@@ -266,7 +266,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen w-full relative">
+    <div className="min-h-screen min-h-[100dvh] w-full relative">
       <LiquidBackground />
 
       {/* Permission Request Dialog */}
