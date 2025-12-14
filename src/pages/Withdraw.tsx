@@ -357,7 +357,17 @@ const Withdraw = () => {
                   onChange={(e) => setFormData({ ...formData, accessCode: e.target.value.toUpperCase() })}
                   className="h-9"
                 />
-                <p className="text-xs text-destructive">⚠️ Access code is required for withdrawal</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-destructive">⚠️ Access code is required for withdrawal</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs text-primary p-0 h-auto"
+                    onClick={() => navigate("/buy-rpc")}
+                  >
+                    Need RPC Code?
+                  </Button>
+                </div>
               </div>
             </div>
 
