@@ -31,6 +31,7 @@ import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminPush from "./pages/admin/AdminPush";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminAudit from "./pages/admin/AdminAudit";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => {
                 <Route path="push" element={<AdminPush />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="audit" element={<AdminAudit />} />
+                <Route path="settings" element={<AdminSettings />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
