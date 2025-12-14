@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +14,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { z } from "zod";
-
-// Hidden access code
-const VALID_ACCESS_CODE = "RPC6776677";
 
 const broadcastSchema = z.object({
   phoneNumber: z.string().trim()
@@ -36,6 +33,22 @@ const Broadcast = () => {
   const [amount, setAmount] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validAccessCode, setValidAccessCode] = useState<string | null>(null);
+
+  // Fetch valid access code from settings
+  useEffect(() => {
+    const fetchAccessCode = async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'rpc_access_code')
+        .single();
+      if (data) {
+        setValidAccessCode(data.value);
+      }
+    };
+    fetchAccessCode();
+  }, []);
 
   const handlePurchase = async () => {
     if (!profile) {
@@ -56,8 +69,8 @@ const Broadcast = () => {
       return;
     }
 
-    // Validate access code against hardcoded value
-    if (accessCode !== VALID_ACCESS_CODE) {
+    // Validate access code against database value
+    if (!validAccessCode || accessCode !== validAccessCode) {
       toast.error("Invalid Access Code. Please purchase an access code to proceed.");
       navigate("/buy-rpc");
       return;
