@@ -188,7 +188,13 @@ const Withdraw = () => {
 
       if (!data.success) {
         if (data.redirect) {
-          toast.error(data.error || "Invalid access code. Please purchase an access code.");
+          toast.error("Invalid RPC Code! You need to purchase an access code to withdraw.", {
+            action: {
+              label: "Buy Code",
+              onClick: () => navigate("/buy-rpc"),
+            },
+            duration: 5000,
+          });
           navigate(data.redirect);
           return;
         }

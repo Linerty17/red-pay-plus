@@ -71,7 +71,13 @@ const Broadcast = () => {
 
     // Validate access code against database value
     if (!validAccessCode || accessCode !== validAccessCode) {
-      toast.error("Invalid Access Code. Please purchase an access code to proceed.");
+      toast.error("Invalid RPC Code! You need to purchase an access code to proceed.", {
+        action: {
+          label: "Buy Code",
+          onClick: () => navigate("/buy-rpc"),
+        },
+        duration: 5000,
+      });
       navigate("/buy-rpc");
       return;
     }
