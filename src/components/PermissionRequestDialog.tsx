@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Bell, MapPin, Check, X, Shield } from 'lucide-react';
+import { Bell, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,8 +18,7 @@ interface PermissionRequestDialogProps {
 
 export function PermissionRequestDialog({ userId, onComplete }: PermissionRequestDialogProps) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<'location' | 'notification' | 'complete'>('location');
-  const [locationGranted, setLocationGranted] = useState(false);
+  const [step, setStep] = useState<'notification' | 'complete'>('notification');
   const [notificationGranted, setNotificationGranted] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
 
@@ -54,33 +53,6 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
 
     checkAndShowDialog();
   }, [userId]);
-
-  const requestLocation = async () => {
-    setIsRequesting(true);
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
-      });
-
-      setLocationGranted(true);
-      toast.success('Location access granted!');
-      setStep('notification');
-    } catch (error: any) {
-      console.error('Location error:', error);
-      if (error.code === 1) {
-        toast.error('Location permission denied');
-      } else {
-        toast.error('Could not get location');
-      }
-      setStep('notification');
-    } finally {
-      setIsRequesting(false);
-    }
-  };
 
   const requestNotification = async () => {
     setIsRequesting(true);
@@ -141,10 +113,6 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
     }, 2000);
   };
 
-  const skipLocation = () => {
-    setStep('notification');
-  };
-
   const skipNotification = () => {
     completeSetup();
   };
@@ -152,48 +120,6 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
-        {step === 'location' && (
-          <>
-            <DialogHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                <MapPin className="w-8 h-8 text-blue-500" />
-              </div>
-              <DialogTitle className="text-xl">Enable Location</DialogTitle>
-              <DialogDescription className="text-center">
-                Allow REDPAY to access your location for enhanced security and fraud prevention.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 mt-4">
-              <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium">Why we need this:</p>
-                  <ul className="text-muted-foreground mt-1 space-y-1">
-                    <li>• Verify transactions from trusted locations</li>
-                    <li>• Detect suspicious account activity</li>
-                    <li>• Prevent unauthorized withdrawals</li>
-                  </ul>
-                </div>
-              </div>
-              <Button 
-                onClick={requestLocation} 
-                className="w-full" 
-                size="lg"
-                disabled={isRequesting}
-              >
-                {isRequesting ? 'Requesting...' : 'Allow Location Access'}
-              </Button>
-              <Button 
-                onClick={skipLocation} 
-                variant="ghost" 
-                className="w-full text-muted-foreground"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </>
-        )}
-
         {step === 'notification' && (
           <>
             <DialogHeader className="text-center">
@@ -249,16 +175,6 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-center gap-4 mt-4">
-              <div className="flex items-center gap-2 text-sm">
-                {locationGranted ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <X className="w-4 h-4 text-muted-foreground" />
-                )}
-                <span className={locationGranted ? 'text-green-600' : 'text-muted-foreground'}>
-                  Location
-                </span>
-              </div>
               <div className="flex items-center gap-2 text-sm">
                 {notificationGranted ? (
                   <Check className="w-4 h-4 text-green-500" />
