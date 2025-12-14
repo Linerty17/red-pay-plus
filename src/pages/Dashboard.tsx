@@ -380,8 +380,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Advert Carousel */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element">
+        {/* Advert Carousel - Top */}
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-slow">
           <CardContent className="p-0">
             <Carousel
               opts={{
@@ -402,7 +402,7 @@ const Dashboard = () => {
                     <img 
                       src={advert} 
                       alt={`RedPay Advertisement ${index + 1}`} 
-                      className="w-full h-auto object-cover" 
+                      className="w-full h-auto max-h-24 object-cover" 
                     />
                   </CarouselItem>
                 ))}
@@ -433,6 +433,37 @@ const Dashboard = () => {
             );
           })}
         </div>
+
+        {/* Advert Carousel - Bottom */}
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-delayed">
+          <CardContent className="p-0">
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 7000,
+                  stopOnInteraction: false,
+                }),
+              ]}
+              className="w-full"
+            >
+              <CarouselContent>
+                {[advert1, advert2, advert3, advert4, advert5, advert6, advert7].map((advert, index) => (
+                  <CarouselItem key={index}>
+                    <img 
+                      src={advert} 
+                      alt={`RedPay Advertisement ${index + 1}`} 
+                      className="w-full h-auto max-h-24 object-cover" 
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          </CardContent>
+        </Card>
       </main>
 
       {/* Video Modal */}
