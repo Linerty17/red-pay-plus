@@ -253,7 +253,17 @@ const Broadcast = () => {
                   onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                   className="bg-background/50"
                 />
-                <p className="text-xs text-destructive">⚠️ Access code is required to proceed</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-destructive">⚠️ Access code is required to proceed</p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs text-primary p-0 h-auto"
+                    onClick={() => navigate("/buy-rpc")}
+                  >
+                    Need RPC Code?
+                  </Button>
+                </div>
               </div>
 
               <Button
