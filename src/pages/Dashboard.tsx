@@ -154,10 +154,20 @@ const Dashboard = () => {
     navigate("/withdraw");
   }, [navigate]);
 
-  const handleOpenVideo = useCallback(() => {
-    // Dailymotion embed URL format
-    setVideoLink("https://geo.dailymotion.com/player.html?video=kjvoNS9iocB3LtEnmRW&mute=false");
-    setVideoOpen(true);
+  const handleOpenVideo = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'video_link')
+        .single();
+      
+      setVideoLink(data?.value || "https://geo.dailymotion.com/player.html?video=kjvoNS9iocB3LtEnmRW&mute=false");
+      setVideoOpen(true);
+    } catch {
+      setVideoLink("https://geo.dailymotion.com/player.html?video=kjvoNS9iocB3LtEnmRW&mute=false");
+      setVideoOpen(true);
+    }
   }, []);
 
   const handleRetry = useCallback(async () => {

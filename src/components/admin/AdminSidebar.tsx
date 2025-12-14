@@ -5,7 +5,8 @@ import {
   Receipt, 
   Bell, 
   FileText,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -31,6 +32,7 @@ const menuItems = [
   { title: 'Send Push', url: '/admin/push', icon: Bell },
   { title: 'Notification Stats', url: '/admin/notifications', icon: Bell },
   { title: 'Audit Logs', url: '/admin/audit', icon: FileText },
+  { title: 'Settings', url: '/admin/settings', icon: Settings },
 ];
 
 export function AdminSidebar() {
