@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
-import { ArrowLeft, Check, Clock, X } from "lucide-react";
+import ShareableReceipt from "@/components/ShareableReceipt";
+import { ArrowLeft, Check, Clock, X, Download, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import html2canvas from "html2canvas";
 
 interface Transaction {
   id: string;
@@ -26,6 +29,8 @@ const Receipt = () => {
   const { profile } = useAuth();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchTransaction = async () => {
@@ -48,6 +53,91 @@ const Receipt = () => {
 
     fetchTransaction();
   }, [id, profile]);
+
+  const generateReceiptImage = async (): Promise<string | null> => {
+    if (!receiptRef.current) return null;
+    
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      });
+      return canvas.toDataURL("image/png");
+    } catch (error) {
+      console.error("Error generating receipt image:", error);
+      return null;
+    }
+  };
+
+  const handleDownload = async () => {
+    setGenerating(true);
+    try {
+      const imageData = await generateReceiptImage();
+      if (!imageData) {
+        toast.error("Failed to generate receipt image");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.download = `REDPAY-Receipt-${transaction?.transaction_id}.png`;
+      link.href = imageData;
+      link.click();
+      toast.success("Receipt downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      toast.error("Failed to download receipt");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setGenerating(true);
+    try {
+      const imageData = await generateReceiptImage();
+      if (!imageData) {
+        toast.error("Failed to generate receipt image");
+        return;
+      }
+
+      // Convert base64 to blob
+      const response = await fetch(imageData);
+      const blob = await response.blob();
+      const file = new File([blob], `REDPAY-Receipt-${transaction?.transaction_id}.png`, {
+        type: "image/png",
+      });
+
+      // Check if Web Share API is supported
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "REDPAY Transaction Receipt",
+          text: `Transaction Receipt - ${transaction?.title} - ₦${transaction?.amount.toLocaleString()}`,
+          files: [file],
+        });
+        toast.success("Receipt shared successfully!");
+      } else {
+        // Fallback: copy to clipboard or download
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          toast.success("Receipt copied to clipboard!");
+        } catch {
+          // If clipboard fails, trigger download
+          handleDownload();
+        }
+      }
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        console.error("Error sharing receipt:", error);
+        toast.error("Failed to share receipt");
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -84,6 +174,7 @@ const Receipt = () => {
 
   const StatusIcon = getStatusIcon();
   const statusColor = getStatusColor();
+  const userName = profile ? `${profile.first_name} ${profile.last_name}` : undefined;
 
   return (
     <div className="min-h-screen w-full relative">
@@ -182,14 +273,44 @@ const Receipt = () => {
           </CardContent>
         </Card>
 
+        {/* Share/Download Buttons */}
+        <div className="flex gap-3">
+          <Button
+            onClick={handleDownload}
+            className="flex-1"
+            variant="outline"
+            disabled={generating}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {generating ? "Generating..." : "Download"}
+          </Button>
+          <Button
+            onClick={handleShare}
+            className="flex-1"
+            disabled={generating}
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            {generating ? "Generating..." : "Share"}
+          </Button>
+        </div>
+
         <Button
           onClick={() => navigate('/history')}
           className="w-full"
-          variant="outline"
+          variant="ghost"
         >
           Back to History
         </Button>
       </main>
+
+      {/* Hidden Shareable Receipt for image generation */}
+      <div className="fixed -left-[9999px] top-0">
+        <ShareableReceipt
+          ref={receiptRef}
+          transaction={transaction}
+          userName={userName}
+        />
+      </div>
     </div>
   );
 };
