@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { Copy, Check, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const PaymentInstructions = () => {
   const navigate = useNavigate();
@@ -17,12 +18,50 @@ const PaymentInstructions = () => {
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [showFailure, setShowFailure] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
-  const amount = "6,700";
-  const accountNumber = "5972862604";
-  const bankName = "Moniepoint MFB";
-  const accountName = "BLESSING WILLIAMS";
+  const [amount, setAmount] = useState("6,700");
+  const [accountNumber, setAccountNumber] = useState("5972862604");
+  const [bankName, setBankName] = useState("Moniepoint MFB");
+  const [accountName, setAccountName] = useState("BLESSING WILLIAMS");
   const referenceId = `REF${Date.now()}`;
+
+  useEffect(() => {
+    fetchPaymentSettings();
+  }, []);
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('key, value')
+        .in('key', ['payment_amount', 'account_number', 'bank_name', 'account_name']);
+
+      if (error) throw error;
+
+      data?.forEach((setting) => {
+        switch (setting.key) {
+          case 'payment_amount':
+            const num = parseInt(setting.value);
+            setAmount(num.toLocaleString());
+            break;
+          case 'account_number':
+            setAccountNumber(setting.value);
+            break;
+          case 'bank_name':
+            setBankName(setting.value);
+            break;
+          case 'account_name':
+            setAccountName(setting.value);
+            break;
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching payment settings:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
