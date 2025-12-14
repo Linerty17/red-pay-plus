@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 
 const menuItems = [
   { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
+  { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Referrals', url: '/admin/referrals', icon: Users },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: Receipt },
