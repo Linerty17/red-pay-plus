@@ -184,18 +184,20 @@ const Withdraw = () => {
         }
       });
 
-      if (error) throw error;
+      // Handle edge function errors (non-2xx responses)
+      if (error) {
+        // Check if it's an invalid RPC code error
+        const errorMessage = error.message?.toLowerCase() || '';
+        if (errorMessage.includes('invalid access code') || errorMessage.includes('403')) {
+          navigate("/buy-rpc", { state: { invalidCode: true } });
+          return;
+        }
+        throw error;
+      }
 
       if (!data.success) {
         if (data.redirect) {
-          toast.error("Invalid RPC Code! You need to purchase an access code to withdraw.", {
-            action: {
-              label: "Buy Code",
-              onClick: () => navigate("/buy-rpc"),
-            },
-            duration: 5000,
-          });
-          navigate(data.redirect);
+          navigate("/buy-rpc", { state: { invalidCode: true } });
           return;
         }
         throw new Error(data.error || "Withdrawal failed");
@@ -219,6 +221,12 @@ const Withdraw = () => {
       navigate(`/success?type=withdraw&amount=${withdrawAmount.toLocaleString()}`);
     } catch (error: any) {
       console.error('Error processing withdrawal:', error);
+      // Check for RPC code related errors in catch block as well
+      const errorMessage = error?.message?.toLowerCase() || '';
+      if (errorMessage.includes('invalid access code') || errorMessage.includes('403') || errorMessage.includes('forbidden')) {
+        navigate("/buy-rpc", { state: { invalidCode: true } });
+        return;
+      }
       toast.error(error.message || "Failed to process withdrawal");
     } finally {
       setLoading(false);
