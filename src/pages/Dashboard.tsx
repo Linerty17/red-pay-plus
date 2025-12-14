@@ -22,6 +22,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import advert1 from "@/assets/advert-1.png";
 import advert2 from "@/assets/advert-2.png";
+import advert3 from "@/assets/advert-3.png";
+import advert4 from "@/assets/advert-4.png";
+import advert5 from "@/assets/advert-5.png";
+import advert6 from "@/assets/advert-6.png";
+import advert7 from "@/assets/advert-7.png";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -369,10 +380,34 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Advert 1 */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-slow">
+        {/* Advert Carousel */}
+        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element">
           <CardContent className="p-0">
-            <img src={advert1} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
+            <Carousel
+              opts={{
+                align: "start",
+                loop: true,
+              }}
+              plugins={[
+                Autoplay({
+                  delay: 7000,
+                  stopOnInteraction: false,
+                }),
+              ]}
+              className="w-full"
+            >
+              <CarouselContent>
+                {[advert1, advert2, advert3, advert4, advert5, advert6, advert7].map((advert, index) => (
+                  <CarouselItem key={index}>
+                    <img 
+                      src={advert} 
+                      alt={`RedPay Advertisement ${index + 1}`} 
+                      className="w-full h-auto object-cover" 
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
           </CardContent>
         </Card>
 
@@ -398,13 +433,6 @@ const Dashboard = () => {
             );
           })}
         </div>
-
-        {/* Advert 2 */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in overflow-hidden float-element-delayed">
-          <CardContent className="p-0">
-            <img src={advert2} alt="RedPay Advertisement" className="w-full h-auto max-h-24 object-cover" />
-          </CardContent>
-        </Card>
       </main>
 
       {/* Video Modal */}
