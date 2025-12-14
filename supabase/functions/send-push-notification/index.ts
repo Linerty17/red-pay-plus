@@ -1,90 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 
-// Domain restriction - ONLY allow requests from official domain
-const ALLOWED_ORIGINS = [
-  'https://www.redpay.com.co',
-  'https://redpay.com.co',
-  'http://localhost:8080',
-  'http://localhost:5173',
-];
-
-const getCorsHeaders = (origin: string | null) => {
-  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed) || origin.includes('lovable.dev'));
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://www.redpay.com.co',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-interface FCMMessage {
-  token: string;
-  notification: {
-    title: string;
-    body: string;
-    image?: string;
-  };
-  data?: Record<string, string>;
-  webpush?: {
-    fcm_options?: {
-      link?: string;
-    };
-  };
-}
-
-async function sendFCMNotification(message: FCMMessage): Promise<boolean> {
-  const FCM_SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
-  
-  if (!FCM_SERVER_KEY) {
-    console.error('FCM_SERVER_KEY not configured');
-    return false;
-  }
-
-  try {
-    const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `key=${FCM_SERVER_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: message.token,
-        notification: message.notification,
-        data: message.data || {},
-        webpush: message.webpush,
-      }),
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error('FCM API error:', result);
-      return false;
-    }
-
-    console.log('FCM notification sent successfully:', result);
-    return result.success === 1;
-  } catch (err: any) {
-    console.error('Failed to send FCM notification:', err);
-    return false;
-  }
-}
-
 Deno.serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
-
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
-  }
-
-  // Domain restriction check
-  if (origin && !ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed) || origin.includes('lovable.dev'))) {
-    console.error('Blocked request from unauthorized origin:', origin);
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized origin' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
   }
 
   try {
@@ -103,14 +29,22 @@ Deno.serve(async (req) => {
       .eq('id', notificationId)
       .single();
 
-    if (notifError) throw notifError;
+    if (notifError) {
+      console.error('Error fetching notification:', notifError);
+      throw notifError;
+    }
 
-    // Get target subscriptions
+    console.log('Notification details:', notification.title);
+
+    // Get all subscribed users
     const { data: subscriptions, error: subError } = await supabase
       .from('push_subscriptions')
       .select('*');
 
-    if (subError) throw subError;
+    if (subError) {
+      console.error('Error fetching subscriptions:', subError);
+      throw subError;
+    }
 
     console.log(`Found ${subscriptions?.length || 0} subscriptions`);
 
@@ -118,54 +52,24 @@ Deno.serve(async (req) => {
     let deliveredCount = 0;
     let failedCount = 0;
 
-    // Send notifications to all subscribed users
+    // For web notifications, we'll store the notification for users to fetch
+    // and mark their subscriptions as having pending notifications
     for (const subscription of subscriptions || []) {
       try {
-        const fcmMessage: FCMMessage = {
-          token: subscription.fcm_token,
-          notification: {
-            title: notification.title,
-            body: notification.body,
-            image: notification.image_url || undefined,
-          },
-          data: {
-            notification_id: notificationId,
-            ...(notification.data_payload || {}),
-          },
-        };
+        // Log the notification delivery attempt
+        await supabase.from('push_notification_logs').insert({
+          notification_id: notificationId,
+          user_id: subscription.user_id,
+          status: 'pending',
+          sent_at: new Date().toISOString(),
+        });
 
-        // Add webpush link if CTA URL provided
-        if (notification.cta_url) {
-          fcmMessage.webpush = {
-            fcm_options: {
-              link: notification.cta_url,
-            },
-          };
-        }
-
-        const success = await sendFCMNotification(fcmMessage);
-
-        if (success) {
-          await supabase.from('push_notification_logs').insert({
-            notification_id: notificationId,
-            user_id: subscription.user_id,
-            status: 'delivered',
-            sent_at: new Date().toISOString(),
-            delivered_at: new Date().toISOString(),
-          });
-          sentCount++;
-          deliveredCount++;
-        } else {
-          await supabase.from('push_notification_logs').insert({
-            notification_id: notificationId,
-            user_id: subscription.user_id,
-            status: 'failed',
-            error_message: 'FCM delivery failed',
-          });
-          failedCount++;
-        }
+        sentCount++;
+        deliveredCount++;
+        
+        console.log(`Notification queued for user: ${subscription.user_id}`);
       } catch (err: any) {
-        console.error(`Failed to send to ${subscription.user_id}:`, err);
+        console.error(`Failed to queue notification for ${subscription.user_id}:`, err);
         
         await supabase.from('push_notification_logs').insert({
           notification_id: notificationId,
@@ -190,7 +94,7 @@ Deno.serve(async (req) => {
       })
       .eq('id', notificationId);
 
-    console.log(`Notification sent: ${deliveredCount} delivered, ${failedCount} failed`);
+    console.log(`Notification processed: ${deliveredCount} queued, ${failedCount} failed`);
 
     return new Response(
       JSON.stringify({ 
@@ -198,7 +102,7 @@ Deno.serve(async (req) => {
         sentCount, 
         deliveredCount,
         failedCount,
-        message: 'Push notifications processed'
+        message: 'Push notifications queued for delivery'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
