@@ -183,7 +183,7 @@ export default function AdminPush() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="bg-primary/10 border-primary/20">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="bg-primary rounded-full p-3">
@@ -203,7 +203,29 @@ export default function AdminPush() {
             <div>
               <p className="text-sm text-muted-foreground">Push Subscribed</p>
               <p className="text-3xl font-bold">{subscribedUsers.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">
+                {totalUsers > 0 ? ((subscribedUsers / totalUsers) * 100).toFixed(1) : 0}% of users
+              </p>
             </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-blue-500/10 border-blue-500/20">
+          <CardContent className="flex items-center justify-between p-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-500 rounded-full p-3">
+                <RefreshCw className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Reach Rate</p>
+                <p className="text-3xl font-bold">
+                  {subscribedUsers > 0 ? subscribedUsers : 0}
+                </p>
+                <p className="text-xs text-muted-foreground">users will receive</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchUserCounts}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
       </div>
