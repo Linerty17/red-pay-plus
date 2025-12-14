@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, BellRing, RefreshCw, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -13,13 +13,36 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
-    if ('Notification' in window && 'serviceWorker' in navigator) {
+    if ('Notification' in window) {
       setIsSupported(true);
       setPermission(Notification.permission);
     }
-  }, []);
+    
+    // Check if user has an active subscription
+    checkSubscription();
+  }, [userId]);
+
+  const checkSubscription = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        setIsSubscribed(true);
+      } else {
+        setIsSubscribed(false);
+      }
+    } catch (err) {
+      console.error('Error checking subscription:', err);
+    }
+  };
 
   const registerPushNotifications = async () => {
     if (!isSupported) {
@@ -31,40 +54,31 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
 
     try {
       // Request permission
-      const permission = await Notification.requestPermission();
-      setPermission(permission);
+      const newPermission = await Notification.requestPermission();
+      setPermission(newPermission);
 
-      if (permission !== 'granted') {
+      if (newPermission !== 'granted') {
         toast.error('Permission denied for notifications');
         return;
       }
 
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      await navigator.serviceWorker.ready;
-
-      // Subscribe to push notifications
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          // Firebase VAPID Public Key - Get from Firebase Console > Project Settings > Cloud Messaging > Web Push certificates
-          'BGpT8mLJvLRHM_yq-K5QZ5QZ5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z5Z'
-        ),
-      });
+      // Generate a unique device token for this browser
+      const deviceToken = `web_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Save subscription to database
       const { error } = await supabase
         .from('push_subscriptions')
         .upsert({
           user_id: userId,
-          fcm_token: JSON.stringify(subscription),
+          fcm_token: deviceToken,
           platform: 'web',
         }, {
-          onConflict: 'user_id,fcm_token'
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
 
+      setIsSubscribed(true);
       toast.success('Push notifications enabled!');
     } catch (error: any) {
       console.error('Error enabling push notifications:', error);
@@ -74,16 +88,68 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
     }
   };
 
+  const testNotification = async () => {
+    if (permission !== 'granted') {
+      toast.error('Please enable notifications first');
+      return;
+    }
+
+    setIsTesting(true);
+    try {
+      // Show a test notification locally
+      const notification = new Notification('REDPAY Test Notification', {
+        body: 'Your notifications are working correctly! 🎉',
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+        tag: 'test-notification'
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      toast.success('Test notification sent!');
+    } catch (error: any) {
+      console.error('Error sending test notification:', error);
+      toast.error('Failed to send test notification');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const resubscribe = async () => {
+    // Clear the permission check from localStorage
+    localStorage.removeItem(`permissions_checked_${userId}`);
+    
+    // Re-register
+    await registerPushNotifications();
+  };
+
   if (!isSupported) {
-    return null;
+    return (
+      <Card className="bg-card/60 backdrop-blur-sm border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BellOff className="h-5 w-5 text-muted-foreground" />
+            Push Notifications
+          </CardTitle>
+          <CardDescription>
+            Your browser doesn't support push notifications
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
-    <Card>
+    <Card className="bg-card/60 backdrop-blur-sm border-border">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           {permission === 'granted' ? (
             <Bell className="h-5 w-5 text-green-500" />
+          ) : permission === 'denied' ? (
+            <BellOff className="h-5 w-5 text-destructive" />
           ) : (
             <BellOff className="h-5 w-5 text-muted-foreground" />
           )}
@@ -91,15 +157,60 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
         </CardTitle>
         <CardDescription>
           {permission === 'granted'
-            ? 'You will receive notifications about important updates'
+            ? isSubscribed 
+              ? 'You are subscribed to receive notifications'
+              : 'Permission granted but not subscribed'
+            : permission === 'denied'
+            ? 'Notifications are blocked. Enable in browser settings.'
             : 'Enable notifications to stay updated'}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {permission === 'granted' ? (
-          <p className="text-sm text-muted-foreground">
-            Notifications are enabled ✓
-          </p>
+      <CardContent className="space-y-3">
+        {permission === 'granted' && isSubscribed ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 p-3 rounded-lg">
+              <CheckCircle className="h-4 w-4" />
+              <span>Notifications are active</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={testNotification}
+                variant="outline"
+                disabled={isTesting}
+                className="flex-1"
+              >
+                <BellRing className="h-4 w-4 mr-2" />
+                {isTesting ? 'Sending...' : 'Test'}
+              </Button>
+              <Button
+                onClick={resubscribe}
+                variant="outline"
+                disabled={isRegistering}
+                className="flex-1"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRegistering ? 'animate-spin' : ''}`} />
+                {isRegistering ? 'Updating...' : 'Re-subscribe'}
+              </Button>
+            </div>
+          </div>
+        ) : permission === 'granted' && !isSubscribed ? (
+          <Button
+            onClick={registerPushNotifications}
+            disabled={isRegistering}
+            className="w-full"
+          >
+            {isRegistering ? 'Subscribing...' : 'Subscribe to Notifications'}
+          </Button>
+        ) : permission === 'denied' ? (
+          <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+            <p className="font-medium mb-1">How to enable:</p>
+            <ol className="list-decimal list-inside space-y-1 text-xs">
+              <li>Click the lock icon in the address bar</li>
+              <li>Find "Notifications" in the menu</li>
+              <li>Change from "Block" to "Allow"</li>
+              <li>Refresh the page</li>
+            </ol>
+          </div>
         ) : (
           <Button
             onClick={registerPushNotifications}
@@ -112,16 +223,4 @@ export function NotificationSetup({ userId }: NotificationSetupProps) {
       </CardContent>
     </Card>
   );
-}
-
-// Helper function to convert VAPID key
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
 }
