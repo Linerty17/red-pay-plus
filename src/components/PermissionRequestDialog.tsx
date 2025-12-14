@@ -24,16 +24,35 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
   const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
-    // Check if permissions were already requested
-    const permissionsChecked = localStorage.getItem(`permissions_checked_${userId}`);
-    
-    if (!permissionsChecked) {
-      // Small delay before showing dialog
+    const checkAndShowDialog = async () => {
+      // Check if user already has push subscription
+      const { data: subscription } = await supabase
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // If already subscribed, don't show dialog
+      if (subscription) {
+        return;
+      }
+
+      // Check last prompt time - only show once per day if skipped
+      const lastPrompt = localStorage.getItem(`permissions_prompt_${userId}`);
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      
+      if (lastPrompt && parseInt(lastPrompt) > oneDayAgo) {
+        return; // Don't show if prompted within last 24 hours
+      }
+
+      // Show dialog after delay
       const timer = setTimeout(() => {
         setOpen(true);
       }, 1500);
       return () => clearTimeout(timer);
-    }
+    };
+
+    checkAndShowDialog();
   }, [userId]);
 
   const requestLocation = async () => {
@@ -114,7 +133,8 @@ export function PermissionRequestDialog({ userId, onComplete }: PermissionReques
 
   const completeSetup = () => {
     setStep('complete');
-    localStorage.setItem(`permissions_checked_${userId}`, 'true');
+    // Store timestamp instead of boolean - allows re-prompting after 24 hours
+    localStorage.setItem(`permissions_prompt_${userId}`, Date.now().toString());
     setTimeout(() => {
       setOpen(false);
       onComplete?.();
