@@ -26,9 +26,6 @@ interface WithdrawalRequest {
   access_code: string;
 }
 
-// Server-side access code validation - HIDDEN from client
-const VALID_ACCESS_CODES = ['RPC6776677'];
-
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -82,8 +79,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch valid access code from settings table
+    const { data: settingData, error: settingError } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'rpc_access_code')
+      .single();
+
+    if (settingError || !settingData) {
+      console.error('Failed to fetch RPC access code from settings:', settingError);
+      return new Response(
+        JSON.stringify({ error: 'System configuration error', success: false }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validAccessCode = settingData.value;
+
     // SERVER-SIDE ACCESS CODE VALIDATION - Most critical security check
-    if (!VALID_ACCESS_CODES.includes(access_code)) {
+    if (access_code !== validAccessCode) {
       console.error('Invalid access code attempt for user:', user_id);
       return new Response(
         JSON.stringify({ error: 'Invalid access code', success: false, redirect: '/buy-rpc' }),
