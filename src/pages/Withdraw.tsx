@@ -115,8 +115,6 @@ const getWithdrawalEmailTemplate = (
 </html>
 `;
 
-// Hidden access code
-const VALID_ACCESS_CODE = "RPC6776677";
 
 const withdrawSchema = z.object({
   accountNumber: z.string().trim()
@@ -156,7 +154,7 @@ const Withdraw = () => {
       return;
     }
 
-    // Validate form data with Zod
+    // Client-side validation with Zod
     const validation = withdrawSchema.safeParse(formData);
     if (!validation.success) {
       const firstError = validation.error.errors[0];
@@ -164,16 +162,9 @@ const Withdraw = () => {
       return;
     }
 
-    // Validate access code against hardcoded value
-    if (formData.accessCode !== VALID_ACCESS_CODE) {
-      toast.error("Invalid Access Code. Please purchase an access code to proceed.");
-      navigate("/buy-rpc");
-      return;
-    }
-
     const withdrawAmount = parseInt(formData.amount);
 
-    // Check balance
+    // Basic client-side balance check
     if (withdrawAmount > (profile.balance || 0)) {
       toast.error("Insufficient balance");
       return;
@@ -181,35 +172,28 @@ const Withdraw = () => {
 
     setLoading(true);
     try {
-      const newBalance = (profile.balance || 0) - withdrawAmount;
-      
-      // Update user balance
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ balance: newBalance })
-        .eq('user_id', profile.user_id);
-
-      if (updateError) throw updateError;
-
-      // Create transaction record
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
+      // Call secure server-side withdrawal endpoint
+      const { data, error } = await supabase.functions.invoke('process-withdrawal', {
+        body: {
           user_id: profile.user_id,
-          title: 'Withdrawal',
-          amount: -withdrawAmount,
-          type: 'debit',
-          transaction_id: `WD-${Date.now()}`,
-          balance_before: profile.balance || 0,
-          balance_after: newBalance,
-          meta: {
-            account_number: formData.accountNumber,
-            account_name: formData.accountName,
-            bank: formData.bank
-          }
-        });
+          amount: withdrawAmount,
+          account_number: formData.accountNumber,
+          account_name: formData.accountName,
+          bank: formData.bank,
+          access_code: formData.accessCode
+        }
+      });
 
-      if (transactionError) throw transactionError;
+      if (error) throw error;
+
+      if (!data.success) {
+        if (data.redirect) {
+          toast.error(data.error || "Invalid access code. Please purchase an access code.");
+          navigate(data.redirect);
+          return;
+        }
+        throw new Error(data.error || "Withdrawal failed");
+      }
 
       // Send withdrawal email notification
       sendEmailNotification(

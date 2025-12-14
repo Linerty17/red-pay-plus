@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import OfficialBanner from "./components/OfficialBanner";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 import Auth from "./pages/Auth";
 import Welcome from "./pages/Welcome";
@@ -41,6 +42,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <OfficialBanner />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Auth />} />
