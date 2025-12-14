@@ -107,6 +107,7 @@ export default function AdminPush() {
     try {
       const adminUser = await supabase.auth.getUser();
       
+      // Create push notification record
       const { data: notification, error: notifError } = await supabase
         .from('push_notifications')
         .insert({
@@ -122,12 +123,30 @@ export default function AdminPush() {
 
       if (notifError) throw notifError;
 
+      // Create in-app notification for all users (broadcast)
+      const { error: inAppError } = await supabase
+        .from('in_app_notifications')
+        .insert({
+          user_id: null, // null means broadcast to all
+          title,
+          body,
+          cta_url: ctaUrl || null,
+          type: 'info',
+          push_notification_id: notification.id
+        });
+
+      if (inAppError) {
+        console.error('In-app notification error:', inAppError);
+      }
+
+      // Send push notifications to subscribed users
       const { data, error: functionError } = await supabase.functions.invoke('send-push-notification', {
         body: { notificationId: notification.id }
       });
 
       if (functionError) throw functionError;
 
+      // Log admin action
       await supabase
         .from('audit_logs')
         .insert({
@@ -138,11 +157,12 @@ export default function AdminPush() {
             title,
             cta_url: ctaUrl,
             target_type: 'all',
-            result: data
+            result: data,
+            in_app_created: !inAppError
           },
         });
 
-      toast.success(`Notification sent to ${data.deliveredCount || 0} users!`);
+      toast.success(`Notification sent! Push: ${data.deliveredCount || 0} users, In-app: All active users`);
       
       setTitle('');
       setBody('');

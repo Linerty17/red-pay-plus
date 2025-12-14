@@ -5,6 +5,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import { PermissionRequestDialog } from "@/components/PermissionRequestDialog";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { useNotifications } from "@/hooks/useNotifications";
 import {
   Wallet,
@@ -345,7 +346,10 @@ const Dashboard = () => {
       {/* Header */}
       <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
         <Logo />
-        <ProfileButton />
+        <div className="flex items-center gap-2">
+          {profile?.user_id && <NotificationCenter userId={profile.user_id} />}
+          <ProfileButton />
+        </div>
       </header>
 
       {/* Telegram Notification Overlay */}

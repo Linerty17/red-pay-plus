@@ -41,6 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      in_app_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          cta_url: string | null
+          id: string
+          is_read: boolean | null
+          push_notification_id: string | null
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          cta_url?: string | null
+          id?: string
+          is_read?: boolean | null
+          push_notification_id?: string | null
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          cta_url?: string | null
+          id?: string
+          is_read?: boolean | null
+          push_notification_id?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_push_notification_id_fkey"
+            columns: ["push_notification_id"]
+            isOneToOne: false
+            referencedRelation: "push_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_campaigns: {
         Row: {
           admin_user_id: string
