@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ShareableReceipt from "@/components/ShareableReceipt";
-import { ArrowLeft, Check, Clock, X, Download, Share2 } from "lucide-react";
+import { ArrowLeft, Check, Clock, X, Download, Share2, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -137,6 +137,37 @@ const Receipt = () => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!transaction) return;
+    
+    const statusText = transaction.title.includes("Failed") 
+      ? "Failed" 
+      : transaction.title.includes("Pending") 
+        ? "Pending" 
+        : "Successful";
+    
+    const amountPrefix = transaction.type === "credit" ? "+" : "-";
+    const formattedDate = new Date(transaction.date).toLocaleString();
+    
+    const message = `*REDPAY Transaction Receipt*
+
+💰 *Amount:* ${amountPrefix}₦${transaction.amount.toLocaleString()}
+📋 *Type:* ${transaction.title}
+📅 *Date:* ${formattedDate}
+🔖 *Transaction ID:* ${transaction.transaction_id}${transaction.reference_id ? `\n📎 *Reference:* ${transaction.reference_id}` : ""}
+💳 *Balance After:* ₦${transaction.balance_after.toLocaleString()}
+✅ *Status:* ${statusText}
+
+_Thank you for using REDPAY_
+www.redpay.com.co`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, "_blank");
+    toast.success("Opening WhatsApp...");
   };
 
   if (loading) {
@@ -274,23 +305,31 @@ const Receipt = () => {
         </Card>
 
         {/* Share/Download Buttons */}
-        <div className="flex gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             onClick={handleDownload}
-            className="flex-1"
             variant="outline"
             disabled={generating}
+            className="flex flex-col items-center gap-1 h-auto py-3"
           >
-            <Download className="w-4 h-4 mr-2" />
-            {generating ? "Generating..." : "Download"}
+            <Download className="w-5 h-5" />
+            <span className="text-xs">{generating ? "..." : "Download"}</span>
           </Button>
           <Button
             onClick={handleShare}
-            className="flex-1"
+            variant="outline"
             disabled={generating}
+            className="flex flex-col items-center gap-1 h-auto py-3"
           >
-            <Share2 className="w-4 h-4 mr-2" />
-            {generating ? "Generating..." : "Share"}
+            <Share2 className="w-5 h-5" />
+            <span className="text-xs">{generating ? "..." : "Share"}</span>
+          </Button>
+          <Button
+            onClick={handleWhatsAppShare}
+            className="flex flex-col items-center gap-1 h-auto py-3 bg-[#25D366] hover:bg-[#128C7E] text-white"
+          >
+            <MessageCircle className="w-5 h-5" />
+            <span className="text-xs">WhatsApp</span>
           </Button>
         </div>
 
