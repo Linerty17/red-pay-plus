@@ -5,6 +5,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import { PermissionRequestDialog } from "@/components/PermissionRequestDialog";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   Wallet,
   Video,
@@ -38,6 +39,9 @@ const Dashboard = () => {
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showTelegramBanner, setShowTelegramBanner] = useState(true);
+
+  // Initialize notifications hook
+  useNotifications(profile?.user_id);
 
   useEffect(() => {
     if (profile?.last_claim_at) {
