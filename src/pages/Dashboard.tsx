@@ -17,6 +17,8 @@ import {
   HeadphonesIcon,
   Send,
   MessageCircle,
+  Bell,
+  X,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -50,9 +52,72 @@ const Dashboard = () => {
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showTelegramBanner, setShowTelegramBanner] = useState(true);
+  const [showNotificationBanner, setShowNotificationBanner] = useState(false);
+  const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
 
   // Initialize notifications hook
   useNotifications(profile?.user_id);
+
+  // Check if user has push subscription
+  useEffect(() => {
+    const checkNotificationSubscription = async () => {
+      if (!profile?.user_id) return;
+      
+      // Check if notifications are supported
+      if (!('Notification' in window)) return;
+      
+      // Check if already subscribed
+      const { data: subscription } = await supabase
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', profile.user_id)
+        .maybeSingle();
+
+      // Show banner if not subscribed and notification permission is not denied
+      if (!subscription && Notification.permission !== 'denied') {
+        setShowNotificationBanner(true);
+      }
+    };
+
+    checkNotificationSubscription();
+  }, [profile?.user_id]);
+
+  const handleEnableNotifications = async () => {
+    if (!profile?.user_id) return;
+    
+    setIsEnablingNotifications(true);
+    try {
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        // Generate a unique device token
+        const deviceToken = `web_${profile.user_id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Save subscription to database
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            user_id: profile.user_id,
+            fcm_token: deviceToken,
+            platform: 'web',
+          }, {
+            onConflict: 'user_id'
+          });
+
+        if (error) throw error;
+
+        toast.success('Notifications enabled! You\'ll now receive updates.');
+        setShowNotificationBanner(false);
+      } else {
+        toast.error('Notification permission denied');
+      }
+    } catch (error) {
+      console.error('Error enabling notifications:', error);
+      toast.error('Failed to enable notifications');
+    } finally {
+      setIsEnablingNotifications(false);
+    }
+  };
 
   useEffect(() => {
     if (profile?.last_claim_at) {
@@ -316,6 +381,43 @@ const Dashboard = () => {
                 >
                   Maybe Later
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Notification Enable Banner */}
+      {showNotificationBanner && !showTelegramBanner && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
+          <Card className="bg-gradient-to-r from-amber-500/90 to-orange-500/90 border-amber-400/50 shadow-lg">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">Enable Notifications</p>
+                  <p className="text-white/80 text-xs">Get alerts for bonuses & updates</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleEnableNotifications}
+                    size="sm"
+                    disabled={isEnablingNotifications}
+                    className="bg-white text-amber-600 hover:bg-white/90 font-semibold"
+                  >
+                    {isEnablingNotifications ? 'Enabling...' : 'Enable'}
+                  </Button>
+                  <Button
+                    onClick={() => setShowNotificationBanner(false)}
+                    size="sm"
+                    variant="ghost"
+                    className="text-white/80 hover:text-white hover:bg-white/10 p-1 h-auto"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
