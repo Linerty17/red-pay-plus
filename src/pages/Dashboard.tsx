@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const TELEGRAM_CHANNEL_URL = "https://t.me/Skypay261";
 
 const Dashboard = () => {
-  const { profile, refreshProfile, signOut } = useAuth();
+  const { profile, refreshProfile, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
@@ -154,13 +154,10 @@ const Dashboard = () => {
     navigate("/withdraw");
   }, [navigate]);
 
-  const handleAction = useCallback((action: string) => {
-    if (action === "Video") {
-      setVideoLink("https://dai.ly/kjvoNS9iocB3LtEnmRW");
-      setVideoOpen(true);
-    } else {
-      toast.info(`${action} feature coming soon!`);
-    }
+  const handleOpenVideo = useCallback(() => {
+    // Dailymotion embed URL format
+    setVideoLink("https://geo.dailymotion.com/player.html?video=kjvoNS9iocB3LtEnmRW&mute=false");
+    setVideoOpen(true);
   }, []);
 
   const handleRetry = useCallback(async () => {
@@ -182,8 +179,8 @@ const Dashboard = () => {
     { icon: HeadphonesIcon, label: "Support", color: "bg-red-600", route: "/support" },
   ], []);
 
-  // Loading skeleton while profile loads
-  if (!profile && !loadError) {
+  // Loading skeleton while auth or profile loads
+  if (authLoading || (!profile && !loadError)) {
     return (
       <div className="min-h-screen w-full relative">
         <LiquidBackground />
@@ -305,7 +302,7 @@ const Dashboard = () => {
         {/* Video Button - Above Balance */}
         <div className="flex justify-end">
           <Button
-            onClick={() => handleAction("Video")}
+            onClick={handleOpenVideo}
             variant="outline"
             size="sm"
             className="bg-primary/10 hover:bg-primary/20 border-primary text-primary font-semibold"
@@ -398,24 +395,22 @@ const Dashboard = () => {
 
       {/* Video Modal */}
       <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Video</DialogTitle>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle>RedPay Video</DialogTitle>
           </DialogHeader>
-          {videoLink ? (
-            <div className="aspect-video">
+          <div className="aspect-video w-full">
+            {videoOpen && videoLink && (
               <iframe
                 src={videoLink}
-                className="w-full h-full rounded-lg"
+                className="w-full h-full"
+                allow="autoplay; fullscreen; picture-in-picture; web-share"
                 allowFullScreen
                 title="RedPay Video"
+                loading="eager"
               />
-            </div>
-          ) : (
-            <div className="aspect-video bg-secondary/20 rounded-lg flex items-center justify-center">
-              <p className="text-muted-foreground">No video available yet</p>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
