@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Video, Save, ExternalLink } from 'lucide-react';
+import { Video, Save, ExternalLink, CreditCard, Key } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
@@ -12,35 +12,61 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Payment settings
+  const [paymentAmount, setPaymentAmount] = useState('6700');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+
+  // RPC settings
+  const [rpcAccessCode, setRpcAccessCode] = useState('');
+  const [savingRpc, setSavingRpc] = useState(false);
+
   useEffect(() => {
-    fetchVideoLink();
+    fetchAllSettings();
   }, []);
 
-  const fetchVideoLink = async () => {
+  const fetchAllSettings = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('settings')
-        .select('value')
-        .eq('key', 'video_link')
-        .single();
+        .select('key, value');
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
+      if (error) throw error;
 
-      if (data) {
-        setVideoLink(data.value);
-      }
+      data?.forEach((setting) => {
+        switch (setting.key) {
+          case 'video_link':
+            setVideoLink(setting.value);
+            break;
+          case 'payment_amount':
+            setPaymentAmount(setting.value);
+            break;
+          case 'account_number':
+            setAccountNumber(setting.value);
+            break;
+          case 'bank_name':
+            setBankName(setting.value);
+            break;
+          case 'account_name':
+            setAccountName(setting.value);
+            break;
+          case 'rpc_access_code':
+            setRpcAccessCode(setting.value);
+            break;
+        }
+      });
     } catch (error) {
-      console.error('Error fetching video link:', error);
-      toast.error('Failed to load video settings');
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveVideo = async () => {
     if (!videoLink.trim()) {
       toast.error('Please enter a video link');
       return;
@@ -48,16 +74,13 @@ export default function AdminSettings() {
 
     setSaving(true);
     try {
-      // Convert dai.ly short links to embed format
       let embedLink = videoLink.trim();
       
-      // Handle short link format: https://dai.ly/VIDEO_ID
       const shortLinkMatch = embedLink.match(/dai\.ly\/([a-zA-Z0-9]+)/);
       if (shortLinkMatch) {
         embedLink = `https://geo.dailymotion.com/player.html?video=${shortLinkMatch[1]}&mute=false`;
       }
       
-      // Handle dailymotion.com/video/ format
       const videoMatch = embedLink.match(/dailymotion\.com\/video\/([a-zA-Z0-9]+)/);
       if (videoMatch) {
         embedLink = `https://geo.dailymotion.com/player.html?video=${videoMatch[1]}&mute=false`;
@@ -79,6 +102,60 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSavePaymentDetails = async () => {
+    if (!accountNumber.trim() || !bankName.trim() || !accountName.trim()) {
+      toast.error('Please fill in all payment details');
+      return;
+    }
+
+    setSavingPayment(true);
+    try {
+      const updates = [
+        { key: 'payment_amount', value: paymentAmount.trim(), updated_at: new Date().toISOString() },
+        { key: 'account_number', value: accountNumber.trim(), updated_at: new Date().toISOString() },
+        { key: 'bank_name', value: bankName.trim(), updated_at: new Date().toISOString() },
+        { key: 'account_name', value: accountName.trim(), updated_at: new Date().toISOString() },
+      ];
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('settings')
+          .upsert(update, { onConflict: 'key' });
+        if (error) throw error;
+      }
+
+      toast.success('Payment details updated successfully');
+    } catch (error) {
+      console.error('Error saving payment details:', error);
+      toast.error('Failed to save payment details');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  const handleSaveRpcCode = async () => {
+    if (!rpcAccessCode.trim()) {
+      toast.error('Please enter an RPC access code');
+      return;
+    }
+
+    setSavingRpc(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'rpc_access_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      toast.success('RPC access code updated successfully');
+    } catch (error) {
+      console.error('Error saving RPC access code:', error);
+      toast.error('Failed to save RPC access code');
+    } finally {
+      setSavingRpc(false);
+    }
+  };
+
   const extractVideoId = (url: string): string | null => {
     const match = url.match(/video=([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
@@ -91,6 +168,102 @@ export default function AdminSettings() {
         <p className="text-muted-foreground">Manage app settings and configurations</p>
       </div>
 
+      {/* Payment Details Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Payment Details
+          </CardTitle>
+          <CardDescription>
+            Configure the bank account details shown on the payment instructions page
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="paymentAmount">Payment Amount (₦)</Label>
+              <Input
+                id="paymentAmount"
+                placeholder="6700"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="accountNumber">Account Number</Label>
+              <Input
+                id="accountNumber"
+                placeholder="Enter account number"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bankName">Bank Name</Label>
+              <Input
+                id="bankName"
+                placeholder="Enter bank name"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="accountName">Account Name</Label>
+              <Input
+                id="accountName"
+                placeholder="Enter account name"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+          <Button onClick={handleSavePaymentDetails} disabled={savingPayment || loading}>
+            <Save className="h-4 w-4 mr-2" />
+            {savingPayment ? 'Saving...' : 'Update Payment Details'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* RPC Access Code Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-primary" />
+            RPC Access Code
+          </CardTitle>
+          <CardDescription>
+            Set the global RPC access code for user verification
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="rpcAccessCode">Access Code</Label>
+            <div className="flex gap-2">
+              <Input
+                id="rpcAccessCode"
+                placeholder="Enter RPC access code"
+                value={rpcAccessCode}
+                onChange={(e) => setRpcAccessCode(e.target.value)}
+                disabled={loading}
+              />
+              <Button onClick={handleSaveRpcCode} disabled={savingRpc || loading}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingRpc ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This code will be used for RPC verification across the app
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Video Settings Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -112,7 +285,7 @@ export default function AdminSettings() {
                 onChange={(e) => setVideoLink(e.target.value)}
                 disabled={loading}
               />
-              <Button onClick={handleSave} disabled={saving || loading}>
+              <Button onClick={handleSaveVideo} disabled={saving || loading}>
                 <Save className="h-4 w-4 mr-2" />
                 {saving ? 'Saving...' : 'Save'}
               </Button>
