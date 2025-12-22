@@ -53,7 +53,7 @@ export default function AdminSettings() {
           case 'account_name':
             setAccountName(setting.value);
             break;
-          case 'rpc_access_code':
+          case 'rpc_code':
             setRpcAccessCode(setting.value);
             break;
         }
@@ -143,7 +143,7 @@ export default function AdminSettings() {
     try {
       const { error } = await supabase
         .from('settings')
-        .upsert({ key: 'rpc_access_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        .upsert({ key: 'rpc_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
       if (error) throw error;
 
@@ -237,7 +237,7 @@ export default function AdminSettings() {
             RPC Access Code
           </CardTitle>
           <CardDescription>
-            Set the global RPC access code for user verification
+            This code is displayed on the payment approval page. When you change it here, it updates everywhere.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, XCircle, Copy, Check, ExternalLink, AlertTriangle, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, Copy, Check, ExternalLink, AlertTriangle, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -14,12 +14,13 @@ interface PaymentStatusOverlayProps {
 export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayProps) => {
   const navigate = useNavigate();
   const [purchase, setPurchase] = useState<any>(null);
-  const [userRpcCode, setUserRpcCode] = useState<string | null>(null);
+  const [globalRpcCode, setGlobalRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkPaymentStatus();
+    fetchGlobalRpcCode();
     
     // Subscribe to realtime updates
     const channel = supabase
@@ -35,10 +36,10 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
         (payload) => {
           console.log('Payment status updated:', payload);
           const newData = payload.new as any;
-          if (newData && !newData.status_acknowledged && (newData.status === 'approved' || newData.status === 'rejected')) {
+          if (newData && !newData.status_acknowledged && (newData.status === 'approved' || newData.status === 'rejected' || newData.status === 'cancelled')) {
             setPurchase(newData);
             if (newData.status === 'approved') {
-              fetchUserRpcCode();
+              fetchGlobalRpcCode();
             }
           }
         }
@@ -50,6 +51,18 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
     };
   }, [userId]);
 
+  const fetchGlobalRpcCode = async () => {
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'rpc_code')
+      .maybeSingle();
+    
+    if (data?.value) {
+      setGlobalRpcCode(data.value);
+    }
+  };
+
   const checkPaymentStatus = async () => {
     try {
       const { data: purchaseData } = await supabase
@@ -57,7 +70,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
         .select('*')
         .eq('user_id', userId)
         .eq('status_acknowledged', false)
-        .in('status', ['approved', 'rejected'])
+        .in('status', ['approved', 'rejected', 'cancelled'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -65,27 +78,13 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
       if (purchaseData) {
         setPurchase(purchaseData);
         if (purchaseData.status === 'approved') {
-          await fetchUserRpcCode();
+          await fetchGlobalRpcCode();
         }
       }
     } catch (error) {
       console.error('Error checking payment status:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUserRpcCode = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from('users')
-        .select('rpc_code')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-      if (data?.rpc_code) {
-        setUserRpcCode(data.rpc_code);
-      }
     }
   };
 
@@ -105,7 +104,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
   };
 
   const copyRpcCode = () => {
-    const code = userRpcCode || purchase?.rpc_code_issued;
+    const code = globalRpcCode || purchase?.rpc_code_issued;
     if (code) {
       navigator.clipboard.writeText(code);
       setRpcCodeCopied(true);
@@ -123,7 +122,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
 
   // Approved status
   if (purchase.status === 'approved') {
-    const rpcCode = userRpcCode || purchase.rpc_code_issued;
+    const rpcCode = globalRpcCode || purchase.rpc_code_issued;
     
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md animate-fade-in">
@@ -262,6 +261,81 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
                 onClick={() => window.open('https://t.me/redpaysupport', '_blank')}
                 variant="outline"
                 className="w-full border-destructive/30 hover:bg-destructive/10" 
+                size="lg"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+                Contact Support
+              </Button>
+              
+              <Button 
+                onClick={acknowledgeStatus}
+                variant="ghost"
+                className="w-full" 
+                size="lg"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Cancelled status
+  if (purchase.status === 'cancelled') {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md animate-fade-in">
+        <Card className="mx-4 max-w-md w-full bg-card border-orange-500/50 shadow-2xl animate-scale-in">
+          <CardContent className="p-8 text-center space-y-6">
+            {/* Animated Ban icon */}
+            <div className="relative">
+              <div className="w-28 h-28 mx-auto relative">
+                <div className="absolute inset-0 bg-orange-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 bg-orange-500/10 rounded-full" />
+                <div className="relative w-28 h-28 bg-gradient-to-br from-orange-500/80 to-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30">
+                  <Ban className="w-14 h-14 text-white animate-bounce" style={{ animationDuration: '2s' }} />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-orange-500 flex items-center justify-center gap-2">
+                <AlertTriangle className="w-6 h-6" />
+                Code Cancelled
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The RPC code you purchased has been cancelled by the administrator. 
+                Your access has been revoked and you will need to purchase again.
+              </p>
+            </div>
+
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-semibold text-orange-500">Why was it cancelled?</p>
+              <ul className="text-xs text-muted-foreground text-left space-y-1">
+                <li>• Payment issues or discrepancies</li>
+                <li>• Violation of terms of service</li>
+                <li>• Administrative action</li>
+                <li>• Contact support for more details</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={handleTryAgain}
+                className="w-full bg-primary hover:bg-primary/90" 
+                size="lg"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Purchase Again
+              </Button>
+              
+              <Button 
+                onClick={() => window.open('https://t.me/redpaysupport', '_blank')}
+                variant="outline"
+                className="w-full border-orange-500/30 hover:bg-orange-500/10" 
                 size="lg"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
