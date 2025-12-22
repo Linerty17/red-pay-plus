@@ -74,12 +74,12 @@ const PaymentInstructions = () => {
       }
 
       if (userData) {
-        // Check for pending or rejected purchase (exclude cancelled ones - they should start fresh)
+        // Check for pending purchase only (exclude cancelled and rejected - they should start fresh)
         const { data: purchase } = await supabase
           .from('rpc_purchases')
           .select('*')
           .eq('user_id', userData.user_id)
-          .not('status', 'eq', 'cancelled')
+          .not('status', 'in', '("cancelled","rejected")')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
