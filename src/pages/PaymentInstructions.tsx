@@ -8,7 +8,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Copy, Check, Upload } from "lucide-react";
+import { Copy, Check, Upload, Clock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,18 +17,60 @@ const PaymentInstructions = () => {
   const [copied, setCopied] = useState<string>("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showFailure, setShowFailure] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [pendingPurchase, setPendingPurchase] = useState<any>(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
   const [amount, setAmount] = useState("6,700");
   const [accountNumber, setAccountNumber] = useState("5972862604");
   const [bankName, setBankName] = useState("Moniepoint MFB");
   const [accountName, setAccountName] = useState("BLESSING WILLIAMS");
-  const referenceId = `REF${Date.now()}`;
 
   useEffect(() => {
     fetchPaymentSettings();
+    checkExistingPurchase();
   }, []);
+
+  const checkExistingPurchase = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCheckingStatus(false);
+        return;
+      }
+
+      // Get user's profile
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_id, rpc_purchased')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (userData?.rpc_purchased) {
+        navigate('/dashboard');
+        return;
+      }
+
+      if (userData) {
+        // Check for pending purchase
+        const { data: purchase } = await supabase
+          .from('rpc_purchases')
+          .select('*')
+          .eq('user_id', userData.user_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (purchase) {
+          setPendingPurchase(purchase);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   const fetchPaymentSettings = async () => {
     try {
@@ -74,14 +116,12 @@ const PaymentInstructions = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validate file type
       const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
       if (!ALLOWED_TYPES.includes(file.type)) {
         toast.error('Only JPG, PNG, and WEBP images are allowed');
         return;
       }
       
-      // Validate file size (5MB max)
       const MAX_FILE_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_FILE_SIZE) {
         toast.error('File must be less than 5MB');
@@ -100,50 +140,137 @@ const PaymentInstructions = () => {
     }
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    setShowFailure(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please login first");
+        navigate('/auth');
+        return;
+      }
+
+      // Get user profile
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (userError || !userData) {
+        toast.error("User profile not found");
+        return;
+      }
+
+      // Upload screenshot to storage
+      const fileExt = screenshot.name.split('.').pop();
+      const fileName = `${userData.user_id}-${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(`payments/${fileName}`, screenshot);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error("Failed to upload screenshot");
+        return;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(`payments/${fileName}`);
+
+      // Create RPC purchase record
+      const { data: purchase, error: purchaseError } = await supabase
+        .from('rpc_purchases')
+        .insert({
+          user_id: userData.user_id,
+          user_name: `${userData.first_name} ${userData.last_name}`,
+          email: userData.email,
+          phone: userData.phone,
+          user_unique_id: userData.user_id,
+          proof_image: publicUrl,
+          verified: false
+        })
+        .select()
+        .single();
+
+      if (purchaseError) {
+        console.error('Purchase error:', purchaseError);
+        toast.error("Failed to submit payment");
+        return;
+      }
+
+      setPendingPurchase(purchase);
+      toast.success("Payment submitted for verification!");
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("An error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleContactSupport = () => {
-    navigate("/support");
+  const handleRefreshStatus = async () => {
+    setCheckingStatus(true);
+    await checkExistingPurchase();
+    toast.success("Status refreshed");
   };
 
-  const handleGoToDashboard = () => {
-    navigate("/dashboard");
-  };
-
-  if (showFailure) {
+  // Show pending status
+  if (pendingPurchase && !pendingPurchase.verified) {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
         <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
           <CardContent className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto">
-              <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center">
-                <span className="text-destructive-foreground text-4xl font-light">✕</span>
+            <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center animate-pulse">
+                <Clock className="w-8 h-8 text-white" />
               </div>
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-destructive">Transaction verification failed!</h2>
+              <h2 className="text-2xl font-bold text-amber-500">Payment Pending</h2>
               <p className="text-sm text-muted-foreground">
-                Your payment could not be completed. Reason: No Payment received from you/invalid payment method. 
-                If you have made the payment kindly send payment proof to our support team below
+                Your payment is being reviewed by our team. This usually takes a few minutes.
               </p>
             </div>
 
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 flex items-center justify-between">
-              <span className="text-sm text-foreground">Invalid Payment</span>
-              <div className="w-6 h-6 rounded-full border-2 border-destructive flex items-center justify-center">
-                <span className="text-destructive text-lg font-light">✕</span>
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">Verification Status</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  <span className="text-amber-500 text-sm font-medium">Pending</span>
+                </div>
               </div>
             </div>
 
+            {pendingPurchase.proof_image && (
+              <div className="text-left">
+                <p className="text-xs text-muted-foreground mb-2">Payment Proof Submitted:</p>
+                <img 
+                  src={pendingPurchase.proof_image} 
+                  alt="Payment proof" 
+                  className="w-full h-32 object-cover rounded-lg border border-border"
+                />
+              </div>
+            )}
+
             <div className="space-y-3">
               <Button 
-                onClick={handleGoToDashboard}
+                onClick={handleRefreshStatus}
                 variant="outline"
+                className="w-full" 
+                size="lg"
+                disabled={checkingStatus}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${checkingStatus ? 'animate-spin' : ''}`} />
+                Refresh Status
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/dashboard')}
                 className="w-full" 
                 size="lg"
               >
@@ -151,11 +278,11 @@ const PaymentInstructions = () => {
               </Button>
               
               <Button 
-                onClick={handleContactSupport}
-                className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white" 
-                size="lg"
+                onClick={() => navigate('/support')}
+                variant="ghost"
+                className="w-full text-muted-foreground" 
+                size="sm"
               >
-                <span className="mr-2">✈</span>
                 Contact Support
               </Button>
             </div>
@@ -165,12 +292,52 @@ const PaymentInstructions = () => {
     );
   }
 
-  if (loading) {
+  // Show approved status
+  if (pendingPurchase?.verified) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                <Check className="w-8 h-8 text-primary-foreground" />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Payment Approved!</h2>
+              <p className="text-sm text-muted-foreground">
+                Your RPC code has been activated. You can now access all features.
+              </p>
+            </div>
+
+            {pendingPurchase.rpc_code_issued && (
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-1">Your RPC Code</p>
+                <p className="text-lg font-mono font-bold text-primary">{pendingPurchase.rpc_code_issued}</p>
+              </div>
+            )}
+
+            <Button 
+              onClick={() => navigate('/dashboard')}
+              className="w-full" 
+              size="lg"
+            >
+              Go to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loading || checkingStatus) {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
         <div className="relative z-10">
-          <LoadingSpinner message="Verifying Payment" />
+          <LoadingSpinner message={loading ? "Submitting Payment" : "Checking Status"} />
         </div>
       </div>
     );
@@ -249,25 +416,6 @@ const PaymentInstructions = () => {
                   <p className="text-base font-semibold text-foreground">{accountName}</p>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                <div>
-                  <p className="text-xs text-muted-foreground">Reference ID</p>
-                  <p className="text-sm font-mono text-foreground">{referenceId}</p>
-                </div>
-                <Button
-                  onClick={() => copyToClipboard(referenceId, "Reference")}
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                >
-                  {copied === "Reference" ? (
-                    <Check className="w-4 h-4 text-primary" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
             </div>
 
             {/* Screenshot Upload */}
@@ -285,7 +433,7 @@ const PaymentInstructions = () => {
                   <div className="flex flex-col items-center gap-2 text-center pointer-events-none">
                     <Upload className="w-8 h-8 text-primary" />
                     <p className="text-sm font-medium text-foreground">Click to upload payment proof</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
                   </div>
                 </div>
               </div>
