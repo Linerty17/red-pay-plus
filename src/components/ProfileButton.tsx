@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Eye, EyeOff, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, User, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,7 +17,23 @@ import { toast } from "sonner";
 const ProfileButton = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const { profile } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      setIsOpen(false);
+      navigate('/auth');
+    } catch (error) {
+      toast.error("Failed to log out");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   if (!profile) {
     return null;
@@ -104,6 +122,15 @@ const ProfileButton = () => {
 
           <Button className="w-full" variant="outline">
             Edit Profile
+          </Button>
+          <Button 
+            className="w-full" 
+            variant="destructive"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            {loggingOut ? "Logging out..." : "Log Out"}
           </Button>
         </div>
       </SheetContent>

@@ -4,8 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
-import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, Upload, LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,22 @@ import { NotificationSetup } from "@/components/NotificationSetup";
 const Profile = () => {
   const { profile, refreshProfile } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      navigate('/auth');
+    } catch (error) {
+      toast.error("Failed to log out");
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   if (!profile) {
     return (
@@ -190,6 +205,16 @@ const Profile = () => {
               Back to Dashboard
             </Button>
           </Link>
+          <Button 
+            variant="destructive" 
+            className="w-full" 
+            size="lg"
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            {loggingOut ? "Logging out..." : "Log Out"}
+          </Button>
         </div>
       </main>
     </div>
