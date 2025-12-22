@@ -174,6 +174,9 @@ const BuyRPC = () => {
     setLoadingStep("Processing");
     
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Clear loading states BEFORE showing dialog
+    setLoadingStep("");
     setLoading(false);
     
     // Show payment notice dialog
