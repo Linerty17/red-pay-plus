@@ -20,6 +20,7 @@ const PaymentInstructions = () => {
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [pendingPurchase, setPendingPurchase] = useState<any>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [timeElapsed, setTimeElapsed] = useState({ minutes: 0, seconds: 0 });
 
   const [amount, setAmount] = useState("6,700");
   const [accountNumber, setAccountNumber] = useState("5972862604");
@@ -30,6 +31,27 @@ const PaymentInstructions = () => {
     fetchPaymentSettings();
     checkExistingPurchase();
   }, []);
+
+  // Countdown/elapsed timer effect
+  useEffect(() => {
+    if (!pendingPurchase?.created_at || pendingPurchase?.verified) return;
+
+    const updateTimer = () => {
+      const createdAt = new Date(pendingPurchase.created_at).getTime();
+      const now = Date.now();
+      const elapsed = Math.floor((now - createdAt) / 1000);
+      
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      
+      setTimeElapsed({ minutes, seconds });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    
+    return () => clearInterval(interval);
+  }, [pendingPurchase]);
 
   const checkExistingPurchase = async () => {
     try {
@@ -240,14 +262,31 @@ const PaymentInstructions = () => {
               </p>
             </div>
 
-            {/* Processing Time */}
+            {/* Timer Display */}
             <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="flex items-center justify-center gap-2 mb-3">
                 <Clock className="w-5 h-5 text-primary" />
-                <span className="text-primary font-semibold">Processing Time</span>
+                <span className="text-primary font-semibold">Time Elapsed</span>
               </div>
-              <p className="text-2xl font-bold text-foreground">10 - 30 Minutes</p>
-              <p className="text-xs text-muted-foreground mt-1">Please be patient while we verify your payment</p>
+              <div className="flex items-center justify-center gap-2">
+                <div className="bg-card border border-border rounded-lg px-4 py-2 min-w-[60px]">
+                  <p className="text-2xl font-bold text-foreground font-mono">{String(timeElapsed.minutes).padStart(2, '0')}</p>
+                  <p className="text-xs text-muted-foreground">min</p>
+                </div>
+                <span className="text-2xl font-bold text-foreground">:</span>
+                <div className="bg-card border border-border rounded-lg px-4 py-2 min-w-[60px]">
+                  <p className="text-2xl font-bold text-foreground font-mono">{String(timeElapsed.seconds).padStart(2, '0')}</p>
+                  <p className="text-xs text-muted-foreground">sec</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Estimated completion: 10 - 30 minutes
+              </p>
+              {timeElapsed.minutes >= 30 && (
+                <p className="text-xs text-primary mt-1 font-medium">
+                  Taking longer than expected? Contact support below.
+                </p>
+              )}
             </div>
 
             <div className="bg-secondary/50 border border-border rounded-lg p-4">
