@@ -18,6 +18,7 @@ interface Payment {
   verified: boolean;
   rpc_code_issued: string | null;
   created_at: string;
+  status?: string;
 }
 
 export default function AdminPayments() {
@@ -57,7 +58,7 @@ export default function AdminPayments() {
         
         const { error: updateError } = await supabase
           .from('rpc_purchases')
-          .update({ verified: true, rpc_code_issued: rpcCode })
+          .update({ verified: true, rpc_code_issued: rpcCode, status: 'approved' })
           .eq('id', selectedPayment.id);
 
         if (updateError) throw updateError;
@@ -88,9 +89,10 @@ export default function AdminPayments() {
 
         toast.success('Payment approved successfully');
       } else {
+        // Reject payment with status update
         const { error } = await supabase
           .from('rpc_purchases')
-          .update({ verified: false })
+          .update({ verified: false, status: 'rejected' })
           .eq('id', selectedPayment.id);
 
         if (error) throw error;
@@ -112,8 +114,9 @@ export default function AdminPayments() {
     }
   };
 
-  const pendingPayments = payments.filter(p => !p.verified);
-  const approvedPayments = payments.filter(p => p.verified);
+  const pendingPayments = payments.filter(p => p.status === 'pending' || (!p.verified && !p.status));
+  const approvedPayments = payments.filter(p => p.status === 'approved' || p.verified);
+  const rejectedPayments = payments.filter(p => p.status === 'rejected');
 
   if (loading) {
     return (
@@ -131,7 +134,7 @@ export default function AdminPayments() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
@@ -154,6 +157,14 @@ export default function AdminPayments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{approvedPayments.length}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-destructive">Rejected</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{rejectedPayments.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -233,7 +244,11 @@ export default function AdminPayments() {
                   <TableCell>{payment.email}</TableCell>
                   <TableCell>{payment.phone}</TableCell>
                   <TableCell>
-                    <Badge variant={payment.verified ? 'default' : 'secondary'}>{payment.verified ? 'Verified' : 'Pending'}</Badge>
+                    <Badge 
+                      variant={payment.status === 'approved' || payment.verified ? 'default' : payment.status === 'rejected' ? 'destructive' : 'secondary'}
+                    >
+                      {payment.status === 'approved' || payment.verified ? 'Approved' : payment.status === 'rejected' ? 'Rejected' : 'Pending'}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {payment.proof_image && (
@@ -244,7 +259,7 @@ export default function AdminPayments() {
                   </TableCell>
                   <TableCell>{new Date(payment.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {!payment.verified && (
+                    {(payment.status === 'pending' || (!payment.verified && !payment.status)) && (
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}>
                           <Check className="h-4 w-4 mr-1" /> Approve
