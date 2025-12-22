@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Check, X, ExternalLink, Image, Eye, Ban } from 'lucide-react';
+import { Check, X, ExternalLink, Image, Eye, Ban, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 interface Payment {
   id: string;
   user_id: string;
@@ -28,6 +29,8 @@ export default function AdminPayments() {
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'cancel' | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [globalRpcCode, setGlobalRpcCode] = useState<string>('RPC2000122');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchPayments();
@@ -154,6 +157,24 @@ export default function AdminPayments() {
   const rejectedPayments = payments.filter(p => p.status === 'rejected');
   const cancelledPayments = payments.filter(p => p.status === 'cancelled');
 
+  // Filtered payments based on search and status filter
+  const filteredPayments = useMemo(() => {
+    return payments.filter(payment => {
+      const matchesSearch = searchQuery === '' || 
+        payment.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        payment.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        payment.phone.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'pending' && (payment.status === 'pending' || (!payment.verified && !payment.status))) ||
+        (statusFilter === 'approved' && payment.status === 'approved') ||
+        (statusFilter === 'rejected' && payment.status === 'rejected') ||
+        (statusFilter === 'cancelled' && payment.status === 'cancelled');
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [payments, searchQuery, statusFilter]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -267,7 +288,38 @@ export default function AdminPayments() {
 
       {/* All Payments Table */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">All Payments</h2>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <h2 className="text-xl font-semibold">All Payments</h2>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {filteredPayments.length === 0 ? (
+          <div className="border rounded-lg p-8 text-center text-muted-foreground">
+            No payments found matching your search criteria.
+          </div>
+        ) : (
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
@@ -282,9 +334,9 @@ export default function AdminPayments() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payments.map((payment) => (
+              {filteredPayments.map((payment) => (
                 <TableRow key={payment.id}>
-                  <TableCell>{payment.user_name}</TableCell>
+                  <TableCell className="font-medium">{payment.user_name}</TableCell>
                   <TableCell>{payment.email}</TableCell>
                   <TableCell>{payment.phone}</TableCell>
                   <TableCell>
@@ -325,6 +377,7 @@ export default function AdminPayments() {
             </TableBody>
           </Table>
         </div>
+        )}
       </div>
 
       {/* Image Viewer Dialog */}
