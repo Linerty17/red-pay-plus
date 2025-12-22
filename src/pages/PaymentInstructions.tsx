@@ -8,7 +8,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { Copy, Check, Upload, Clock, RefreshCw } from "lucide-react";
+import { Copy, Check, Upload, Clock, RefreshCw, XCircle, ExternalLink, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -242,8 +242,119 @@ const PaymentInstructions = () => {
     window.open('https://t.me/redpaysupport', '_blank');
   };
 
+  // Get user's RPC code from users table
+  const [userRpcCode, setUserRpcCode] = useState<string | null>(null);
+  const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRpcCode = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('users')
+          .select('rpc_code')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        if (data?.rpc_code) {
+          setUserRpcCode(data.rpc_code);
+        }
+      }
+    };
+    fetchUserRpcCode();
+  }, [pendingPurchase]);
+
+  const copyRpcCode = () => {
+    const code = userRpcCode || pendingPurchase?.rpc_code_issued;
+    if (code) {
+      navigator.clipboard.writeText(code);
+      setRpcCodeCopied(true);
+      toast.success("RPC Code copied!");
+      setTimeout(() => setRpcCodeCopied(false), 2000);
+    }
+  };
+
+  const handleTryAgain = () => {
+    setPendingPurchase(null);
+  };
+
+  // Show rejected status
+  if (pendingPurchase?.status === 'rejected') {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center p-4">
+        <LiquidBackground />
+        <Card className="relative z-10 bg-card/90 backdrop-blur-sm border-destructive/30 animate-scale-in max-w-md w-full">
+          <CardContent className="p-8 text-center space-y-6">
+            {/* Animated X icon */}
+            <div className="relative">
+              <div className="w-24 h-24 mx-auto relative">
+                <div className="absolute inset-0 bg-destructive/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 bg-destructive/10 rounded-full" />
+                <div className="relative w-24 h-24 bg-gradient-to-br from-destructive/80 to-destructive rounded-full flex items-center justify-center shadow-lg shadow-destructive/30">
+                  <XCircle className="w-12 h-12 text-destructive-foreground animate-bounce" style={{ animationDuration: '2s' }} />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-destructive flex items-center justify-center gap-2">
+                <AlertTriangle className="w-6 h-6" />
+                Payment Not Approved
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Unfortunately, we couldn't verify your payment. This could be due to incorrect payment details, 
+                insufficient amount, or the screenshot provided was unclear.
+              </p>
+            </div>
+
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-semibold text-destructive">What to do next:</p>
+              <ul className="text-xs text-muted-foreground text-left space-y-1">
+                <li>• Ensure you transferred the exact amount specified</li>
+                <li>• Make sure the screenshot clearly shows the transaction</li>
+                <li>• Verify the account details before retrying</li>
+                <li>• Contact support if you believe this is an error</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={handleTryAgain}
+                className="w-full bg-primary hover:bg-primary/90" 
+                size="lg"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+              
+              <Button 
+                onClick={openTelegramSupport}
+                variant="outline"
+                className="w-full border-destructive/30 hover:bg-destructive/10" 
+                size="lg"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+                Contact Support
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/dashboard')}
+                variant="ghost"
+                className="w-full" 
+                size="lg"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Show pending status
-  if (pendingPurchase && !pendingPurchase.verified) {
+  if (pendingPurchase && !pendingPurchase.verified && pendingPurchase.status !== 'approved') {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
@@ -348,40 +459,124 @@ const PaymentInstructions = () => {
     );
   }
 
-  // Show approved status
-  if (pendingPurchase?.verified) {
+  // Show approved status with beautiful animation
+  if (pendingPurchase?.verified || pendingPurchase?.status === 'approved') {
+    const displayCode = userRpcCode || pendingPurchase?.rpc_code_issued;
+    
     return (
-      <div className="min-h-screen w-full relative flex items-center justify-center">
+      <div className="min-h-screen w-full relative flex items-center justify-center p-4">
         <LiquidBackground />
-        <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                <Check className="w-8 h-8 text-primary-foreground" />
+        <Card className="relative z-10 bg-card/90 backdrop-blur-sm border-primary/30 animate-scale-in max-w-md w-full overflow-hidden">
+          {/* Celebration animation overlay */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '1.5s' }} />
+            <div className="absolute top-0 left-1/2 w-2 h-2 bg-primary/80 rounded-full animate-bounce" style={{ animationDelay: '0.2s', animationDuration: '1.5s' }} />
+            <div className="absolute top-0 left-3/4 w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.4s', animationDuration: '1.5s' }} />
+          </div>
+          
+          <CardContent className="p-8 text-center space-y-6 relative">
+            {/* Animated Success Icon */}
+            <div className="relative">
+              <div className="w-24 h-24 mx-auto relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 bg-primary/10 rounded-full" />
+                <div className="relative w-24 h-24 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 animate-pulse" style={{ animationDuration: '2s' }}>
+                  <CheckCircle2 className="w-14 h-14 text-primary-foreground" />
+                </div>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-primary">Payment Approved!</h2>
-              <p className="text-sm text-muted-foreground">
-                Your RPC code has been activated. You can now access all features.
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold text-primary flex items-center justify-center gap-2">
+                Payment Received ✅
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Congratulations! Your payment has been verified and your RPC code is ready.
               </p>
             </div>
 
-            {pendingPurchase.rpc_code_issued && (
-              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-1">Your RPC Code</p>
-                <p className="text-lg font-mono font-bold text-primary">{pendingPurchase.rpc_code_issued}</p>
+            {/* Important Notice */}
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-center gap-2 text-primary font-semibold">
+                <AlertTriangle className="w-5 h-5" />
+                <span>Important: Activation Required</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Before using your RPC code, you must first copy your code below and validate/activate it using the validation link. 
+                Your code will not work until it has been properly activated.
+              </p>
+            </div>
+
+            {/* RPC Code Display */}
+            {displayCode && (
+              <div className="bg-card border-2 border-primary/50 rounded-xl p-5 space-y-3 shadow-lg shadow-primary/10">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Your RPC Access Code</p>
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-2xl font-mono font-bold text-primary tracking-wider bg-primary/10 px-4 py-2 rounded-lg">
+                    {displayCode}
+                  </p>
+                  <Button
+                    onClick={copyRpcCode}
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-10 p-0 border-primary/30 hover:bg-primary/10"
+                  >
+                    {rpcCodeCopied ? (
+                      <Check className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-primary font-medium">
+                  {rpcCodeCopied ? "Code copied to clipboard!" : "Click to copy your code"}
+                </p>
               </div>
             )}
 
-            <Button 
-              onClick={() => navigate('/dashboard')}
-              className="w-full" 
-              size="lg"
-            >
-              Go to Dashboard
-            </Button>
+            {/* Validation Steps */}
+            <div className="bg-secondary/50 border border-border rounded-lg p-4 text-left space-y-2">
+              <p className="text-sm font-semibold text-foreground">Follow these steps:</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                  <span>Copy your RPC code using the button above</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                  <span>Click the "Activate Code" button below</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                  <span>Paste and validate your code on the activation page</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
+                  <span>Return here to access all features</span>
+                </li>
+              </ol>
+            </div>
+
+            <div className="space-y-3">
+              {/* Validation Link Button */}
+              <Button 
+                onClick={() => window.open('https://redpay-validation.vercel.app/', '_blank')}
+                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20" 
+                size="lg"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Click Here to Activate Code
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/dashboard')}
+                variant="outline"
+                className="w-full" 
+                size="lg"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

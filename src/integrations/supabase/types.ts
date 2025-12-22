@@ -314,6 +314,7 @@ export type Database = {
           phone: string
           proof_image: string | null
           rpc_code_issued: string | null
+          status: string | null
           user_id: string
           user_name: string
           user_unique_id: string
@@ -327,6 +328,7 @@ export type Database = {
           phone: string
           proof_image?: string | null
           rpc_code_issued?: string | null
+          status?: string | null
           user_id: string
           user_name: string
           user_unique_id: string
@@ -340,6 +342,7 @@ export type Database = {
           phone?: string
           proof_image?: string | null
           rpc_code_issued?: string | null
+          status?: string | null
           user_id?: string
           user_name?: string
           user_unique_id?: string
