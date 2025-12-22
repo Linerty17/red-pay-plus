@@ -185,7 +185,20 @@ const BuyRPC = () => {
     navigate("/payment-instructions");
   };
 
-  if (loading) {
+  // Show loading step animation when processing form
+  if (loadingStep) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <div className="relative z-10">
+          <LoadingSpinner message={loadingStep} />
+        </div>
+      </div>
+    );
+  }
+
+  // Show initial loading only when checking existing approval status
+  if (loading && !loadingStep) {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
@@ -302,16 +315,6 @@ const BuyRPC = () => {
     );
   }
 
-  if (loadingStep) {
-    return (
-      <div className="min-h-screen w-full relative flex items-center justify-center">
-        <LiquidBackground />
-        <div className="relative z-10">
-          <LoadingSpinner message={loadingStep} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen w-full relative">
