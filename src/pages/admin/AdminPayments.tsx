@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Check, X, ExternalLink, Image, Eye } from 'lucide-react';
+import { Check, X, ExternalLink, Image, Eye, Ban } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Payment {
@@ -25,12 +25,26 @@ export default function AdminPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'cancel' | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [globalRpcCode, setGlobalRpcCode] = useState<string>('RPC2000122');
 
   useEffect(() => {
     fetchPayments();
+    fetchGlobalRpcCode();
   }, []);
+
+  const fetchGlobalRpcCode = async () => {
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'rpc_code')
+      .maybeSingle();
+    
+    if (data?.value) {
+      setGlobalRpcCode(data.value);
+    }
+  };
 
   const fetchPayments = async () => {
     try {
@@ -54,18 +68,16 @@ export default function AdminPayments() {
 
     try {
       if (actionType === 'approve') {
-        const rpcCode = 'RPC2242535';
-        
         const { error: updateError } = await supabase
           .from('rpc_purchases')
-          .update({ verified: true, rpc_code_issued: rpcCode, status: 'approved' })
+          .update({ verified: true, rpc_code_issued: globalRpcCode, status: 'approved', status_acknowledged: false })
           .eq('id', selectedPayment.id);
 
         if (updateError) throw updateError;
 
         const { error: userError } = await supabase
           .from('users')
-          .update({ rpc_purchased: true, rpc_code: rpcCode })
+          .update({ rpc_purchased: true, rpc_code: globalRpcCode })
           .eq('user_id', selectedPayment.user_id);
 
         if (userError) throw userError;
@@ -84,15 +96,14 @@ export default function AdminPayments() {
         await supabase.from('audit_logs').insert({
           admin_user_id: (await supabase.auth.getUser()).data.user?.id,
           action_type: 'payment_approved',
-          details: { payment_id: selectedPayment.id, rpc_code: rpcCode },
+          details: { payment_id: selectedPayment.id, rpc_code: globalRpcCode },
         });
 
         toast.success('Payment approved successfully');
-      } else {
-        // Reject payment with status update
+      } else if (actionType === 'reject') {
         const { error } = await supabase
           .from('rpc_purchases')
-          .update({ verified: false, status: 'rejected' })
+          .update({ verified: false, status: 'rejected', status_acknowledged: false })
           .eq('id', selectedPayment.id);
 
         if (error) throw error;
@@ -104,6 +115,30 @@ export default function AdminPayments() {
         });
 
         toast.success('Payment rejected');
+      } else if (actionType === 'cancel') {
+        // Cancel an approved payment
+        const { error } = await supabase
+          .from('rpc_purchases')
+          .update({ verified: false, status: 'cancelled', status_acknowledged: false, rpc_code_issued: null })
+          .eq('id', selectedPayment.id);
+
+        if (error) throw error;
+
+        // Also revoke user's RPC access
+        const { error: userError } = await supabase
+          .from('users')
+          .update({ rpc_purchased: false, rpc_code: null })
+          .eq('user_id', selectedPayment.user_id);
+
+        if (userError) throw userError;
+
+        await supabase.from('audit_logs').insert({
+          admin_user_id: (await supabase.auth.getUser()).data.user?.id,
+          action_type: 'payment_cancelled',
+          details: { payment_id: selectedPayment.id },
+        });
+
+        toast.success('Payment cancelled - User notified');
       }
 
       setSelectedPayment(null);
@@ -115,8 +150,9 @@ export default function AdminPayments() {
   };
 
   const pendingPayments = payments.filter(p => p.status === 'pending' || (!p.verified && !p.status));
-  const approvedPayments = payments.filter(p => p.status === 'approved' || p.verified);
+  const approvedPayments = payments.filter(p => p.status === 'approved');
   const rejectedPayments = payments.filter(p => p.status === 'rejected');
+  const cancelledPayments = payments.filter(p => p.status === 'cancelled');
 
   if (loading) {
     return (
@@ -130,14 +166,14 @@ export default function AdminPayments() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Payment Verification</h1>
-        <p className="text-muted-foreground">Review and approve RPC purchases</p>
+        <p className="text-muted-foreground">Review and approve RPC purchases (RPC Code: {globalRpcCode})</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{payments.length}</div>
@@ -165,6 +201,14 @@ export default function AdminPayments() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{rejectedPayments.length}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-500/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-orange-500">Cancelled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-500">{cancelledPayments.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -245,9 +289,10 @@ export default function AdminPayments() {
                   <TableCell>{payment.phone}</TableCell>
                   <TableCell>
                     <Badge 
-                      variant={payment.status === 'approved' || payment.verified ? 'default' : payment.status === 'rejected' ? 'destructive' : 'secondary'}
+                      variant={payment.status === 'approved' ? 'default' : payment.status === 'rejected' ? 'destructive' : payment.status === 'cancelled' ? 'outline' : 'secondary'}
+                      className={payment.status === 'cancelled' ? 'border-orange-500 text-orange-500' : ''}
                     >
-                      {payment.status === 'approved' || payment.verified ? 'Approved' : payment.status === 'rejected' ? 'Rejected' : 'Pending'}
+                      {payment.status === 'approved' ? 'Approved' : payment.status === 'rejected' ? 'Rejected' : payment.status === 'cancelled' ? 'Cancelled' : 'Pending'}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -268,6 +313,11 @@ export default function AdminPayments() {
                           <X className="h-4 w-4 mr-1" /> Reject
                         </Button>
                       </div>
+                    )}
+                    {payment.status === 'approved' && (
+                      <Button size="sm" variant="outline" className="border-orange-500 text-orange-500 hover:bg-orange-500/10" onClick={() => { setSelectedPayment(payment); setActionType('cancel'); }}>
+                        <Ban className="h-4 w-4 mr-1" /> Cancel
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
@@ -301,16 +351,26 @@ export default function AdminPayments() {
       <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{actionType === 'approve' ? 'Approve Payment' : 'Reject Payment'}</DialogTitle>
+            <DialogTitle>
+              {actionType === 'approve' ? 'Approve Payment' : actionType === 'reject' ? 'Reject Payment' : 'Cancel Payment'}
+            </DialogTitle>
             <DialogDescription>
               {actionType === 'approve'
-                ? `Approve payment from ${selectedPayment?.user_name}? This will generate an RPC code and trigger referral bonus if applicable.`
-                : `Reject payment from ${selectedPayment?.user_name}?`}
+                ? `Approve payment from ${selectedPayment?.user_name}? This will issue RPC code "${globalRpcCode}" and trigger referral bonus if applicable.`
+                : actionType === 'reject' 
+                ? `Reject payment from ${selectedPayment?.user_name}?`
+                : `Cancel payment from ${selectedPayment?.user_name}? This will revoke their RPC access and notify them to purchase again.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedPayment(null)}>Cancel</Button>
-            <Button variant={actionType === 'approve' ? 'default' : 'destructive'} onClick={handleAction}>Confirm</Button>
+            <Button variant="outline" onClick={() => setSelectedPayment(null)}>Close</Button>
+            <Button 
+              variant={actionType === 'approve' ? 'default' : 'destructive'} 
+              onClick={handleAction}
+              className={actionType === 'cancel' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+            >
+              Confirm
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
