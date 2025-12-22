@@ -315,6 +315,7 @@ export type Database = {
           proof_image: string | null
           rpc_code_issued: string | null
           status: string | null
+          status_acknowledged: boolean | null
           user_id: string
           user_name: string
           user_unique_id: string
@@ -329,6 +330,7 @@ export type Database = {
           proof_image?: string | null
           rpc_code_issued?: string | null
           status?: string | null
+          status_acknowledged?: boolean | null
           user_id: string
           user_name: string
           user_unique_id: string
@@ -343,6 +345,7 @@ export type Database = {
           proof_image?: string | null
           rpc_code_issued?: string | null
           status?: string | null
+          status_acknowledged?: boolean | null
           user_id?: string
           user_name?: string
           user_unique_id?: string

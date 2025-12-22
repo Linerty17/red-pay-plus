@@ -28,7 +28,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Referrals', url: '/admin/referrals', icon: Users },
-  { title: 'Payments', url: '/admin/payments', icon: CreditCard },
+  { title: 'Payments', url: '/admin/payments', icon: CreditCard, highlight: true },
   { title: 'Transactions', url: '/admin/transactions', icon: Receipt },
   { title: 'Send Push', url: '/admin/push', icon: Bell },
   { title: 'Notification Stats', url: '/admin/notifications', icon: Bell },
@@ -57,10 +57,10 @@ export function AdminSidebar() {
                     <NavLink 
                       to={item.url} 
                       end 
-                      className="hover:bg-muted/50" 
+                      className={`hover:bg-muted/50 ${(item as any).highlight ? 'bg-primary/10 border border-primary/30 text-primary font-semibold' : ''}`}
                       activeClassName="bg-muted text-primary font-medium"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={`h-4 w-4 ${(item as any).highlight ? 'text-primary' : ''}`} />
                       {open && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

@@ -6,6 +6,7 @@ import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import { PermissionRequestDialog } from "@/components/PermissionRequestDialog";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { PaymentStatusOverlay } from "@/components/PaymentStatusOverlay";
 import { useNotifications } from "@/hooks/useNotifications";
 import {
   Wallet,
@@ -55,6 +56,7 @@ const Dashboard = () => {
   const [showTelegramBanner, setShowTelegramBanner] = useState(true);
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
+  const [showPaymentStatus, setShowPaymentStatus] = useState(true);
 
   // Initialize notifications hook
   useNotifications(profile?.user_id);
@@ -334,6 +336,14 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full relative">
       <LiquidBackground />
+
+      {/* Payment Status Overlay - Full Screen */}
+      {profile?.user_id && showPaymentStatus && (
+        <PaymentStatusOverlay 
+          userId={profile.user_id}
+          onClose={() => setShowPaymentStatus(false)}
+        />
+      )}
 
       {/* Permission Request Dialog */}
       {profile?.user_id && (
