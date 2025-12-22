@@ -227,35 +227,35 @@ const PaymentInstructions = () => {
         <LiquidBackground />
         <Card className="relative z-10 bg-card/80 backdrop-blur-sm border-border animate-scale-in max-w-md mx-3">
           <CardContent className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
-              <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center animate-pulse">
-                <Clock className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center animate-pulse">
+                <Clock className="w-8 h-8 text-primary-foreground" />
               </div>
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-amber-500">Payment Confirmation Pending</h2>
+              <h2 className="text-2xl font-bold text-foreground">Payment Confirmation Pending</h2>
               <p className="text-sm text-muted-foreground">
                 Your payment is being reviewed by our team.
               </p>
             </div>
 
             {/* Processing Time */}
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-blue-500" />
-                <span className="text-blue-500 font-semibold">Processing Time</span>
+                <Clock className="w-5 h-5 text-primary" />
+                <span className="text-primary font-semibold">Processing Time</span>
               </div>
               <p className="text-2xl font-bold text-foreground">10 - 30 Minutes</p>
               <p className="text-xs text-muted-foreground mt-1">Please be patient while we verify your payment</p>
             </div>
 
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+            <div className="bg-secondary/50 border border-border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-foreground">Verification Status</span>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                  <span className="text-amber-500 text-sm font-medium">Pending</span>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  <span className="text-primary text-sm font-medium">Pending</span>
                 </div>
               </div>
             </div>
@@ -294,7 +294,7 @@ const PaymentInstructions = () => {
               <Button 
                 onClick={openTelegramSupport}
                 variant="outline"
-                className="w-full border-blue-500 text-blue-500 hover:bg-blue-500/10" 
+                className="w-full" 
                 size="lg"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
