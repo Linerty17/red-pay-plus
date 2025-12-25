@@ -233,6 +233,15 @@ const PaymentInstructions = () => {
 
       setPendingPurchase(purchase);
       toast.success("Payment submitted for verification!");
+
+      // Notify admins about new payment (non-blocking)
+      supabase.functions.invoke('notify-admin-payment', {
+        body: {
+          userName: `${userData.first_name} ${userData.last_name}`,
+          userEmail: userData.email,
+          paymentId: purchase.id
+        }
+      }).catch(err => console.log('Admin notification sent in background:', err));
     } catch (error) {
       console.error('Error:', error);
       toast.error("An error occurred");
