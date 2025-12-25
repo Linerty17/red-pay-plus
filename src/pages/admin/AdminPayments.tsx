@@ -1,14 +1,18 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Check, X, ExternalLink, Image, Eye, Ban, Search } from 'lucide-react';
+import { Check, X, ExternalLink, Image, Eye, Ban, Search, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+
+const PAGE_SIZE = 20;
+
 interface Payment {
   id: string;
   user_id: string;
@@ -22,6 +26,14 @@ interface Payment {
   status?: string;
 }
 
+interface PaymentCounts {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  cancelled: number;
+}
+
 export default function AdminPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,11 +44,39 @@ export default function AdminPayments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [counts, setCounts] = useState<PaymentCounts>({ total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 });
 
   useEffect(() => {
-    fetchPayments();
-    fetchGlobalRpcCode();
+    fetchInitialData();
   }, []);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPayments([]);
+    setPage(0);
+    setHasMore(true);
+    fetchPayments(0, true);
+  }, [statusFilter]);
+
+  const fetchInitialData = async () => {
+    await Promise.all([fetchPayments(0, true), fetchGlobalRpcCode(), fetchCounts()]);
+  };
+
+  const fetchCounts = async () => {
+    const { data, error } = await supabase
+      .from('rpc_purchases')
+      .select('status', { count: 'exact' });
+    
+    if (!error && data) {
+      const pending = data.filter(p => p.status === 'pending' || !p.status).length;
+      const approved = data.filter(p => p.status === 'approved').length;
+      const rejected = data.filter(p => p.status === 'rejected').length;
+      const cancelled = data.filter(p => p.status === 'cancelled').length;
+      setCounts({ total: data.length, pending, approved, rejected, cancelled });
+    }
+  };
 
   const fetchGlobalRpcCode = async () => {
     const { data } = await supabase
@@ -50,15 +90,30 @@ export default function AdminPayments() {
     }
   };
 
-  const fetchPayments = async () => {
+  const fetchPayments = async (pageNum: number, reset: boolean = false) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('rpc_purchases')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'pending') {
+          query = query.or('status.eq.pending,status.is.null');
+        } else {
+          query = query.eq('status', statusFilter);
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
-      setPayments(data || []);
+      
+      const newPayments = data || [];
+      setPayments(prev => reset ? newPayments : [...prev, ...newPayments]);
+      setHasMore(newPayments.length === PAGE_SIZE);
+      setPage(pageNum);
     } catch (error: any) {
       toast.error('Failed to load payments');
       console.error(error);
@@ -66,6 +121,12 @@ export default function AdminPayments() {
       setLoading(false);
     }
   };
+
+  const loadMore = useCallback(async () => {
+    await fetchPayments(page + 1);
+  }, [page, statusFilter]);
+
+  const { loadMoreRef, isLoading: isLoadingMore } = useInfiniteScroll(loadMore, hasMore);
 
   const handleAction = async () => {
     if (!selectedPayment || !actionType) return;
@@ -164,7 +225,7 @@ export default function AdminPayments() {
     } catch (error: any) {
       toast.error(error.message || 'Action failed');
       // Revert on error
-      fetchPayments();
+      fetchPayments(0, true);
     } finally {
       setProcessingId(null);
     }
@@ -215,7 +276,7 @@ export default function AdminPayments() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{payments.length}</div>
+            <div className="text-2xl font-bold">{counts.total}</div>
           </CardContent>
         </Card>
         <Card className="border-amber-500/30">
@@ -223,7 +284,7 @@ export default function AdminPayments() {
             <CardTitle className="text-sm font-medium text-amber-500">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{pendingPayments.length}</div>
+            <div className="text-2xl font-bold text-amber-500">{counts.pending}</div>
           </CardContent>
         </Card>
         <Card className="border-primary/30">
@@ -231,7 +292,7 @@ export default function AdminPayments() {
             <CardTitle className="text-sm font-medium text-primary">Approved</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{approvedPayments.length}</div>
+            <div className="text-2xl font-bold text-primary">{counts.approved}</div>
           </CardContent>
         </Card>
         <Card className="border-destructive/30">
@@ -239,7 +300,7 @@ export default function AdminPayments() {
             <CardTitle className="text-sm font-medium text-destructive">Rejected</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{rejectedPayments.length}</div>
+            <div className="text-2xl font-bold text-destructive">{counts.rejected}</div>
           </CardContent>
         </Card>
         <Card className="border-orange-500/30">
@@ -247,7 +308,7 @@ export default function AdminPayments() {
             <CardTitle className="text-sm font-medium text-orange-500">Cancelled</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-500">{cancelledPayments.length}</div>
+            <div className="text-2xl font-bold text-orange-500">{counts.cancelled}</div>
           </CardContent>
         </Card>
       </div>
@@ -422,6 +483,19 @@ export default function AdminPayments() {
           </Table>
         </div>
         )}
+        
+        {/* Infinite scroll loader */}
+        <div ref={loadMoreRef} className="py-4 flex justify-center">
+          {isLoadingMore && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
+          )}
+          {!hasMore && payments.length > 0 && (
+            <p className="text-sm text-muted-foreground">All payments loaded</p>
+          )}
+        </div>
       </div>
 
       {/* Image Viewer Dialog */}
