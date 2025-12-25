@@ -50,6 +50,79 @@ export default function AdminPayments() {
 
   useEffect(() => {
     fetchInitialData();
+    
+    // Subscribe to real-time updates for new payments
+    const channel = supabase
+      .channel('admin-payments-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'rpc_purchases'
+        },
+        (payload) => {
+          const newPayment = payload.new as Payment;
+          // Add new payment to the top of the list
+          setPayments(prev => [newPayment, ...prev]);
+          // Update counts
+          setCounts(prev => ({
+            ...prev,
+            total: prev.total + 1,
+            pending: prev.pending + 1
+          }));
+          // Show notification toast
+          toast.success(`New payment from ${newPayment.user_name}`, {
+            description: 'A new payment has been submitted for review',
+            action: {
+              label: 'View',
+              onClick: () => setViewingImage(newPayment.proof_image)
+            }
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rpc_purchases'
+        },
+        (payload) => {
+          const updatedPayment = payload.new as Payment;
+          const oldPayment = payload.old as Payment;
+          
+          // Update the payment in the list
+          setPayments(prev => prev.map(p => 
+            p.id === updatedPayment.id ? updatedPayment : p
+          ));
+          
+          // Update counts based on status change
+          if (oldPayment.status !== updatedPayment.status) {
+            setCounts(prev => {
+              const newCounts = { ...prev };
+              // Decrement old status count
+              if (oldPayment.status === 'approved') newCounts.approved--;
+              else if (oldPayment.status === 'rejected') newCounts.rejected--;
+              else if (oldPayment.status === 'cancelled') newCounts.cancelled--;
+              else newCounts.pending--;
+              
+              // Increment new status count
+              if (updatedPayment.status === 'approved') newCounts.approved++;
+              else if (updatedPayment.status === 'rejected') newCounts.rejected++;
+              else if (updatedPayment.status === 'cancelled') newCounts.cancelled++;
+              else newCounts.pending++;
+              
+              return newCounts;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Reset pagination when filters change
