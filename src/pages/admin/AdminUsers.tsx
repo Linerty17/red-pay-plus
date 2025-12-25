@@ -139,9 +139,29 @@ export default function AdminUsers() {
   const handleSave = async () => {
     if (!selectedUser) return;
 
-    try {
-      setSaving(true);
+    setSaving(true);
+    
+    // Optimistic update
+    const updatedUsers = users.map(u => 
+      u.id === selectedUser.id 
+        ? { 
+            ...u, 
+            first_name: editForm.first_name,
+            last_name: editForm.last_name,
+            email: editForm.email,
+            phone: editForm.phone,
+            country: editForm.country,
+            balance: editForm.balance,
+            rpc_code: editForm.rpc_code || null,
+            rpc_purchased: editForm.rpc_purchased,
+            status: editForm.status,
+          } 
+        : u
+    );
+    setUsers(updatedUsers);
+    setIsEditDialogOpen(false);
 
+    try {
       const { error } = await supabase
         .from('users')
         .update({
@@ -159,10 +179,10 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
-      // Log the admin action
+      // Log the admin action in background
       const { data: { user: adminUser } } = await supabase.auth.getUser();
       if (adminUser) {
-        await supabase.from('audit_logs').insert({
+        supabase.from('audit_logs').insert({
           admin_user_id: adminUser.id,
           action_type: 'user_updated',
           target_user_id: selectedUser.user_id,
@@ -179,11 +199,11 @@ export default function AdminUsers() {
       }
 
       toast.success('User updated successfully');
-      setIsEditDialogOpen(false);
-      fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
+      // Revert on error
+      fetchUsers();
     } finally {
       setSaving(false);
     }
@@ -203,10 +223,17 @@ export default function AdminUsers() {
   const handleBanUser = async () => {
     if (!userToBan) return;
 
-    try {
-      setBanning(true);
-      const newStatus = banAction === 'ban' ? 'Banned' : 'Active';
+    setBanning(true);
+    const newStatus = banAction === 'ban' ? 'Banned' : 'Active';
+    
+    // Optimistic update - update UI immediately
+    const updatedUsers = users.map(u => 
+      u.id === userToBan.id ? { ...u, status: newStatus } : u
+    );
+    setUsers(updatedUsers);
+    setIsBanDialogOpen(false);
 
+    try {
       const { error } = await supabase
         .from('users')
         .update({ status: newStatus })
@@ -214,10 +241,10 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
-      // Log the admin action
+      // Log the admin action in background
       const { data: { user: adminUser } } = await supabase.auth.getUser();
       if (adminUser) {
-        await supabase.from('audit_logs').insert({
+        supabase.from('audit_logs').insert({
           admin_user_id: adminUser.id,
           action_type: banAction === 'ban' ? 'user_banned' : 'user_unbanned',
           target_user_id: userToBan.user_id,
@@ -235,14 +262,14 @@ export default function AdminUsers() {
           ? `${userToBan.first_name} ${userToBan.last_name} has been banned` 
           : `${userToBan.first_name} ${userToBan.last_name} has been unbanned`
       );
-      setIsBanDialogOpen(false);
-      setUserToBan(null);
-      fetchUsers();
     } catch (error) {
       console.error('Error updating user ban status:', error);
       toast.error('Failed to update user status');
+      // Revert on error
+      fetchUsers();
     } finally {
       setBanning(false);
+      setUserToBan(null);
     }
   };
 

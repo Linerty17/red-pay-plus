@@ -31,6 +31,7 @@ export default function AdminPayments() {
   const [globalRpcCode, setGlobalRpcCode] = useState<string>('RPC2000122');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPayments();
@@ -68,6 +69,25 @@ export default function AdminPayments() {
 
   const handleAction = async () => {
     if (!selectedPayment || !actionType) return;
+
+    setProcessingId(selectedPayment.id);
+    
+    // Optimistic update - update UI immediately
+    const updatedPayments = payments.map(p => {
+      if (p.id === selectedPayment.id) {
+        if (actionType === 'approve') {
+          return { ...p, status: 'approved', verified: true, rpc_code_issued: globalRpcCode };
+        } else if (actionType === 'reject') {
+          return { ...p, status: 'rejected', verified: false };
+        } else if (actionType === 'cancel') {
+          return { ...p, status: 'cancelled', verified: false, rpc_code_issued: null };
+        }
+      }
+      return p;
+    });
+    setPayments(updatedPayments);
+    setSelectedPayment(null);
+    setActionType(null);
 
     try {
       if (actionType === 'approve') {
@@ -119,7 +139,6 @@ export default function AdminPayments() {
 
         toast.success('Payment rejected');
       } else if (actionType === 'cancel') {
-        // Cancel an approved payment
         const { error } = await supabase
           .from('rpc_purchases')
           .update({ verified: false, status: 'cancelled', status_acknowledged: false, rpc_code_issued: null })
@@ -127,7 +146,6 @@ export default function AdminPayments() {
 
         if (error) throw error;
 
-        // Also revoke user's RPC access
         const { error: userError } = await supabase
           .from('users')
           .update({ rpc_purchased: false, rpc_code: null })
@@ -143,12 +161,12 @@ export default function AdminPayments() {
 
         toast.success('Payment cancelled - User notified');
       }
-
-      setSelectedPayment(null);
-      setActionType(null);
-      fetchPayments();
     } catch (error: any) {
       toast.error(error.message || 'Action failed');
+      // Revert on error
+      fetchPayments();
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -272,10 +290,21 @@ export default function AdminPayments() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1" onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}>
+                    <Button 
+                      size="sm" 
+                      className="flex-1" 
+                      onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}
+                      disabled={processingId === payment.id}
+                    >
                       <Check className="h-4 w-4 mr-1" /> Approve
                     </Button>
-                    <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      className="flex-1" 
+                      onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}
+                      disabled={processingId === payment.id}
+                    >
                       <X className="h-4 w-4 mr-1" /> Reject
                     </Button>
                   </div>
@@ -358,16 +387,31 @@ export default function AdminPayments() {
                   <TableCell>
                     {(payment.status === 'pending' || (!payment.verified && !payment.status)) && (
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}>
+                        <Button 
+                          size="sm" 
+                          onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}
+                          disabled={processingId === payment.id}
+                        >
                           <Check className="h-4 w-4 mr-1" /> Approve
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}
+                          disabled={processingId === payment.id}
+                        >
                           <X className="h-4 w-4 mr-1" /> Reject
                         </Button>
                       </div>
                     )}
                     {payment.status === 'approved' && (
-                      <Button size="sm" variant="outline" className="border-orange-500 text-orange-500 hover:bg-orange-500/10" onClick={() => { setSelectedPayment(payment); setActionType('cancel'); }}>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="border-orange-500 text-orange-500 hover:bg-orange-500/10" 
+                        onClick={() => { setSelectedPayment(payment); setActionType('cancel'); }}
+                        disabled={processingId === payment.id}
+                      >
                         <Ban className="h-4 w-4 mr-1" /> Cancel
                       </Button>
                     )}

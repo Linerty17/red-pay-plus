@@ -21,6 +21,7 @@ const PaymentInstructions = () => {
   const [pendingPurchase, setPendingPurchase] = useState<any>(null);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [timeElapsed, setTimeElapsed] = useState({ minutes: 0, seconds: 0 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [amount, setAmount] = useState("6,700");
   const [accountNumber, setAccountNumber] = useState("5972862604");
@@ -162,6 +163,13 @@ const PaymentInstructions = () => {
       return;
     }
 
+    // Prevent double submission
+    if (isSubmitting) {
+      toast.error("Payment already being submitted");
+      return;
+    }
+
+    setIsSubmitting(true);
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -228,6 +236,7 @@ const PaymentInstructions = () => {
     } catch (error) {
       console.error('Error:', error);
       toast.error("An error occurred");
+      setIsSubmitting(false);
     } finally {
       setLoading(false);
     }
@@ -701,9 +710,9 @@ const PaymentInstructions = () => {
               onClick={handlePaymentConfirm} 
               className="w-full" 
               size="lg"
-              disabled={!screenshot}
+              disabled={!screenshot || isSubmitting}
             >
-              I Have Made Payment
+              {isSubmitting ? "Submitting..." : "I Have Made Payment"}
             </Button>
           </CardContent>
         </Card>
