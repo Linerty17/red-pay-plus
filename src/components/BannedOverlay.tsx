@@ -56,7 +56,7 @@ const BannedOverlay = () => {
   }, [user, profile]);
 
   const handleContactSupport = () => {
-    window.open('https://t.me/+lYQ8nKobnddlMGU8', '_blank');
+    window.open('https://t.me/OfficialChixx9ja', '_blank');
   };
 
   const handleEmailSupport = () => {
