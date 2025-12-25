@@ -67,8 +67,20 @@ export default function AdminPayments() {
         },
         (payload) => {
           const newPayment = payload.new as Payment;
-          // Add new payment to the top of the list
-          setPayments(prev => [newPayment, ...prev]);
+          // Fetch user status for the new payment
+          supabase
+            .from('users')
+            .select('status')
+            .eq('user_id', newPayment.user_id)
+            .maybeSingle()
+            .then(({ data }) => {
+              const paymentWithStatus = {
+                ...newPayment,
+                user_status: data?.status || 'Active'
+              };
+              // Add new payment to the top of the list
+              setPayments(prev => [paymentWithStatus, ...prev]);
+            });
           // Update counts
           setCounts(prev => ({
             ...prev,
@@ -96,9 +108,9 @@ export default function AdminPayments() {
           const updatedPayment = payload.new as Payment;
           const oldPayment = payload.old as Payment;
           
-          // Update the payment in the list
+          // Update the payment in the list, preserving user_status
           setPayments(prev => prev.map(p => 
-            p.id === updatedPayment.id ? updatedPayment : p
+            p.id === updatedPayment.id ? { ...updatedPayment, user_status: p.user_status } : p
           ));
           
           // Update counts based on status change
@@ -189,12 +201,16 @@ export default function AdminPayments() {
       
       // Fetch user statuses for all payments to filter out banned users
       const userIds = [...new Set((data || []).map(p => p.user_id))];
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('user_id, status')
-        .in('user_id', userIds);
+      let userStatusMap = new Map<string, string>();
       
-      const userStatusMap = new Map(usersData?.map(u => [u.user_id, u.status]) || []);
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('user_id, status')
+          .in('user_id', userIds);
+        
+        userStatusMap = new Map(usersData?.map(u => [u.user_id, u.status || 'Active']) || []);
+      }
       
       const paymentsWithStatus = (data || []).map(p => ({
         ...p,
