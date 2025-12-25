@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Edit, Save, X, RefreshCw } from 'lucide-react';
+import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX } from 'lucide-react';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -55,7 +56,11 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
+  const [userToBan, setUserToBan] = useState<User | null>(null);
+  const [banAction, setBanAction] = useState<'ban' | 'unban'>('ban');
   const [saving, setSaving] = useState(false);
+  const [banning, setBanning] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -189,6 +194,58 @@ export default function AdminUsers() {
     setEditForm({ ...editForm, rpc_code: code, rpc_purchased: true });
   };
 
+  const openBanDialog = (user: User, action: 'ban' | 'unban') => {
+    setUserToBan(user);
+    setBanAction(action);
+    setIsBanDialogOpen(true);
+  };
+
+  const handleBanUser = async () => {
+    if (!userToBan) return;
+
+    try {
+      setBanning(true);
+      const newStatus = banAction === 'ban' ? 'Banned' : 'Active';
+
+      const { error } = await supabase
+        .from('users')
+        .update({ status: newStatus })
+        .eq('id', userToBan.id);
+
+      if (error) throw error;
+
+      // Log the admin action
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      if (adminUser) {
+        await supabase.from('audit_logs').insert({
+          admin_user_id: adminUser.id,
+          action_type: banAction === 'ban' ? 'user_banned' : 'user_unbanned',
+          target_user_id: userToBan.user_id,
+          details: {
+            user_email: userToBan.email,
+            user_name: `${userToBan.first_name} ${userToBan.last_name}`,
+            previous_status: userToBan.status,
+            new_status: newStatus,
+          },
+        });
+      }
+
+      toast.success(
+        banAction === 'ban' 
+          ? `${userToBan.first_name} ${userToBan.last_name} has been banned` 
+          : `${userToBan.first_name} ${userToBan.last_name} has been unbanned`
+      );
+      setIsBanDialogOpen(false);
+      setUserToBan(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user ban status:', error);
+      toast.error('Failed to update user status');
+    } finally {
+      setBanning(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -304,20 +361,48 @@ export default function AdminUsers() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={user.status === 'Active' ? 'default' : 'secondary'}
+                      variant={
+                        user.status === 'Active' 
+                          ? 'default' 
+                          : user.status === 'Banned' 
+                            ? 'destructive' 
+                            : 'secondary'
+                      }
                     >
                       {user.status || 'Active'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(user)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(user)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      {user.status === 'Banned' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-green-500 text-green-500 hover:bg-green-500/10"
+                          onClick={() => openBanDialog(user, 'unban')}
+                        >
+                          <ShieldCheck className="h-4 w-4 mr-1" />
+                          Unban
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openBanDialog(user, 'ban')}
+                        >
+                          <Ban className="h-4 w-4 mr-1" />
+                          Ban
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -474,6 +559,72 @@ export default function AdminUsers() {
             <Button onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-1" />
               {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban Confirmation Dialog */}
+      <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {banAction === 'ban' ? (
+                <>
+                  <ShieldX className="h-5 w-5 text-destructive" />
+                  Ban User
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-5 w-5 text-green-500" />
+                  Unban User
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {banAction === 'ban' 
+                ? `Are you sure you want to ban ${userToBan?.first_name} ${userToBan?.last_name}? They will be blocked from accessing the platform until unbanned.`
+                : `Are you sure you want to unban ${userToBan?.first_name} ${userToBan?.last_name}? They will regain full access to the platform.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          {userToBan && (
+            <div className={`p-4 rounded-lg border ${banAction === 'ban' ? 'bg-destructive/10 border-destructive/20' : 'bg-green-500/10 border-green-500/20'}`}>
+              <div className="space-y-2 text-sm">
+                <p><strong>Name:</strong> {userToBan.first_name} {userToBan.last_name}</p>
+                <p><strong>Email:</strong> {userToBan.email}</p>
+                <p><strong>User ID:</strong> {userToBan.user_id}</p>
+                <p><strong>Current Status:</strong> {userToBan.status || 'Active'}</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsBanDialogOpen(false)}
+              disabled={banning}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={banAction === 'ban' ? 'destructive' : 'default'}
+              onClick={handleBanUser}
+              disabled={banning}
+              className={banAction === 'unban' ? 'bg-green-500 hover:bg-green-600' : ''}
+            >
+              {banning ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  {banAction === 'ban' ? 'Banning...' : 'Unbanning...'}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  {banAction === 'ban' ? <Ban className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                  {banAction === 'ban' ? 'Ban User' : 'Unban User'}
+                </span>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
