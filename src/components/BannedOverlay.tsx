@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 const BannedOverlay = () => {
   const { profile, user } = useAuth();
   const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -19,8 +20,19 @@ const BannedOverlay = () => {
       // Check if user status is "Banned"
       if (profile.status === 'Banned') {
         setIsBanned(true);
+        // Fetch ban reason from database
+        const { data } = await supabase
+          .from('users')
+          .select('ban_reason')
+          .eq('user_id', profile.user_id)
+          .single();
+        
+        if (data?.ban_reason) {
+          setBanReason(data.ban_reason);
+        }
       } else {
         setIsBanned(false);
+        setBanReason(null);
       }
       setChecking(false);
     };
@@ -42,8 +54,10 @@ const BannedOverlay = () => {
           (payload: any) => {
             if (payload.new?.status === 'Banned') {
               setIsBanned(true);
+              setBanReason(payload.new?.ban_reason || null);
             } else {
               setIsBanned(false);
+              setBanReason(null);
             }
           }
         )
@@ -96,11 +110,20 @@ const BannedOverlay = () => {
           <h1 className="text-2xl font-bold text-center text-destructive mb-2">
             Account Suspended
           </h1>
-          <p className="text-center text-muted-foreground mb-6">
-            Your account has been temporarily suspended due to a violation of our terms of service or suspicious activity.
+          <p className="text-center text-muted-foreground mb-4">
+            Your account has been temporarily suspended.
           </p>
 
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
+          {banReason && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
+              <p className="text-sm text-center">
+                <strong>Reason:</strong><br />
+                {banReason}
+              </p>
+            </div>
+          )}
+
+          <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
             <p className="text-sm text-center">
               <strong>What this means:</strong><br />
               You cannot access any features of RedPay until your account is reviewed and reinstated by our support team.

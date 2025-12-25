@@ -67,6 +67,7 @@ export default function AdminUsers() {
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
   const [userToBan, setUserToBan] = useState<User | null>(null);
   const [banAction, setBanAction] = useState<'ban' | 'unban'>('ban');
+  const [banReason, setBanReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [banning, setBanning] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -290,6 +291,7 @@ export default function AdminUsers() {
   const openBanDialog = (user: User, action: 'ban' | 'unban') => {
     setUserToBan(user);
     setBanAction(action);
+    setBanReason('');
     setIsBanDialogOpen(true);
   };
 
@@ -307,9 +309,18 @@ export default function AdminUsers() {
     setIsBanDialogOpen(false);
 
     try {
+      const updateData: { status: string; ban_reason?: string | null } = { status: newStatus };
+      
+      // Add or clear ban reason based on action
+      if (banAction === 'ban' && banReason.trim()) {
+        updateData.ban_reason = banReason.trim();
+      } else if (banAction === 'unban') {
+        updateData.ban_reason = null;
+      }
+
       const { error } = await supabase
         .from('users')
-        .update({ status: newStatus })
+        .update(updateData)
         .eq('id', userToBan.id);
 
       if (error) throw error;
@@ -326,6 +337,7 @@ export default function AdminUsers() {
             user_name: `${userToBan.first_name} ${userToBan.last_name}`,
             previous_status: userToBan.status,
             new_status: newStatus,
+            ban_reason: banAction === 'ban' ? banReason.trim() : null,
           },
         });
       }
@@ -343,6 +355,7 @@ export default function AdminUsers() {
     } finally {
       setBanning(false);
       setUserToBan(null);
+      setBanReason('');
     }
   };
 
@@ -711,6 +724,21 @@ export default function AdminUsers() {
                 <p><strong>User ID:</strong> {userToBan.user_id}</p>
                 <p><strong>Current Status:</strong> {userToBan.status || 'Active'}</p>
               </div>
+            </div>
+          )}
+
+          {banAction === 'ban' && (
+            <div className="space-y-2">
+              <Label htmlFor="ban_reason">Ban Reason (visible to user)</Label>
+              <Input
+                id="ban_reason"
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="e.g., Fraudulent activity, Terms of service violation..."
+              />
+              <p className="text-xs text-muted-foreground">
+                This reason will be displayed to the user when they try to access the platform.
+              </p>
             </div>
           )}
 
