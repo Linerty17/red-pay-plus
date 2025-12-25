@@ -86,30 +86,78 @@ export default function AdminUsers() {
     status: '',
   });
 
+  const [isSearching, setIsSearching] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch users when search term changes
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      searchUsers(debouncedSearchTerm);
+    } else {
+      fetchUsers(0, true);
+    }
+  }, [debouncedSearchTerm]);
 
   const fetchInitialData = async () => {
     await Promise.all([fetchUsers(0, true), fetchCounts()]);
   };
 
   const fetchCounts = async () => {
-    // Get total count using count query (not limited by RLS 1000 limit)
-    const { count: totalCount, error: countError } = await supabase
+    // Get total count
+    const { count: totalCount } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
 
-    const { data, error } = await supabase
+    // Get RPC purchased count
+    const { count: rpcCount } = await supabase
       .from('users')
-      .select('rpc_purchased, status');
-    
-    if (!error && data && !countError) {
-      setCounts({
-        total: totalCount || data.length,
-        rpcPurchased: data.filter(u => u.rpc_purchased).length,
-        active: data.filter(u => u.status === 'Active' || !u.status).length,
-      });
+      .select('*', { count: 'exact', head: true })
+      .eq('rpc_purchased', true);
+
+    // Get active users count
+    const { count: activeCount } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .or('status.eq.Active,status.is.null');
+
+    setCounts({
+      total: totalCount || 0,
+      rpcPurchased: rpcCount || 0,
+      active: activeCount || 0,
+    });
+  };
+
+  const searchUsers = async (term: string) => {
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,user_id.ilike.%${term}%,phone.ilike.%${term}%,rpc_code.ilike.%${term}%`)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      
+      setUsers(data || []);
+      setHasMore(false); // Disable infinite scroll during search
+    } catch (error) {
+      console.error('Error searching users:', error);
+      toast.error('Failed to search users');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -138,25 +186,12 @@ export default function AdminUsers() {
   };
 
   const loadMore = useCallback(async () => {
-    await fetchUsers(page + 1);
-  }, [page]);
+    if (!debouncedSearchTerm) {
+      await fetchUsers(page + 1);
+    }
+  }, [page, debouncedSearchTerm]);
 
-  const { loadMoreRef, isLoading: isLoadingMore } = useInfiniteScroll(loadMore, hasMore);
-
-  // Filter users from loaded data (client-side filtering for searched term)
-  const filteredUsers = searchTerm
-    ? users.filter(user => {
-        const term = searchTerm.toLowerCase();
-        return (
-          user.first_name.toLowerCase().includes(term) ||
-          user.last_name.toLowerCase().includes(term) ||
-          user.email.toLowerCase().includes(term) ||
-          user.user_id.toLowerCase().includes(term) ||
-          user.phone.includes(term) ||
-          (user.rpc_code && user.rpc_code.toLowerCase().includes(term))
-        );
-      })
-    : users;
+  const { loadMoreRef, isLoading: isLoadingMore } = useInfiniteScroll(loadMore, hasMore && !debouncedSearchTerm);
 
   const openEditDialog = (user: User) => {
     setSelectedUser(user);
@@ -366,11 +401,14 @@ export default function AdminUsers() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, email, user ID, phone, or RPC code..."
+              placeholder="Search all users by name, email, user ID, phone, or RPC code..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -390,7 +428,7 @@ export default function AdminUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
                     <div>
@@ -467,10 +505,12 @@ export default function AdminUsers() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredUsers.length === 0 && (
+              {users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">No users found</p>
+                    <p className="text-muted-foreground">
+                      {searchTerm ? `No users found for "${searchTerm}"` : 'No users found'}
+                    </p>
                   </TableCell>
                 </TableRow>
               )}
