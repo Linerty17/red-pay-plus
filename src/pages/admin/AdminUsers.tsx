@@ -95,13 +95,18 @@ export default function AdminUsers() {
   };
 
   const fetchCounts = async () => {
+    // Get total count using count query (not limited by RLS 1000 limit)
+    const { count: totalCount, error: countError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+
     const { data, error } = await supabase
       .from('users')
       .select('rpc_purchased, status');
     
-    if (!error && data) {
+    if (!error && data && !countError) {
       setCounts({
-        total: data.length,
+        total: totalCount || data.length,
         rpcPurchased: data.filter(u => u.rpc_purchased).length,
         active: data.filter(u => u.status === 'Active' || !u.status).length,
       });

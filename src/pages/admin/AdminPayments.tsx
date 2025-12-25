@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Check, X, ExternalLink, Image, Eye, Ban, Search, Loader2 } from 'lucide-react';
+import { Check, X, ExternalLink, Image, Eye, Ban, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -47,6 +47,9 @@ export default function AdminPayments() {
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
   const [counts, setCounts] = useState<PaymentCounts>({ total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 });
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [userToBan, setUserToBan] = useState<{ userId: string; userName: string; currentStatus: string } | null>(null);
+  const [banning, setBanning] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -442,6 +445,21 @@ export default function AdminPayments() {
                       <X className="h-4 w-4 mr-1" /> Reject
                     </Button>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setUserToBan({
+                        userId: payment.user_id,
+                        userName: payment.user_name,
+                        currentStatus: 'Active'
+                      });
+                      setBanDialogOpen(true);
+                    }}
+                  >
+                    <Ban className="h-4 w-4 mr-1" /> Ban User
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -614,6 +632,61 @@ export default function AdminPayments() {
               className={actionType === 'cancel' ? 'bg-orange-500 hover:bg-orange-600' : ''}
             >
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban User Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-destructive" />
+              Ban User
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to ban <strong>{userToBan?.userName}</strong>? They will no longer be able to access their account.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={banning}
+              onClick={async () => {
+                if (!userToBan) return;
+                setBanning(true);
+                try {
+                  const { error } = await supabase
+                    .from('users')
+                    .update({ status: 'Banned' })
+                    .eq('user_id', userToBan.userId);
+
+                  if (error) throw error;
+
+                  const { data: { user: adminUser } } = await supabase.auth.getUser();
+                  if (adminUser) {
+                    await supabase.from('audit_logs').insert({
+                      admin_user_id: adminUser.id,
+                      action_type: 'user_banned',
+                      target_user_id: userToBan.userId,
+                      details: { user_name: userToBan.userName, reason: 'Banned from payments page' },
+                    });
+                  }
+
+                  toast.success(`${userToBan.userName} has been banned`);
+                  setBanDialogOpen(false);
+                } catch (error) {
+                  toast.error('Failed to ban user');
+                  console.error(error);
+                } finally {
+                  setBanning(false);
+                }
+              }}
+            >
+              {banning ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Ban className="h-4 w-4 mr-1" />}
+              Ban User
             </Button>
           </DialogFooter>
         </DialogContent>
