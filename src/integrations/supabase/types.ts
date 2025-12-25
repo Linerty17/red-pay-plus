@@ -531,6 +531,7 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           balance: number | null
+          ban_reason: string | null
           country: string
           created_at: string | null
           email: string
@@ -551,6 +552,7 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           balance?: number | null
+          ban_reason?: string | null
           country: string
           created_at?: string | null
           email: string
@@ -571,6 +573,7 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           balance?: number | null
+          ban_reason?: string | null
           country?: string
           created_at?: string | null
           email?: string
