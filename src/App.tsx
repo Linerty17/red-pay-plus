@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import OfficialBanner from "./components/OfficialBanner";
+import BannedOverlay from "./components/BannedOverlay";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 import Auth from "./pages/Auth";
 import Welcome from "./pages/Welcome";
@@ -46,6 +47,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <OfficialBanner />
+          <BannedOverlay />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Auth />} />
