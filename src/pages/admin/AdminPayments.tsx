@@ -78,8 +78,12 @@ export default function AdminPayments() {
                 ...newPayment,
                 user_status: data?.status || 'Active'
               };
-              // Add new payment to the top of the list
-              setPayments(prev => [paymentWithStatus, ...prev]);
+              // Add new payment to the top of the list only if it doesn't already exist
+              setPayments(prev => {
+                const exists = prev.some(p => p.id === newPayment.id);
+                if (exists) return prev;
+                return [paymentWithStatus, ...prev];
+              });
             });
           // Update counts
           setCounts(prev => ({
