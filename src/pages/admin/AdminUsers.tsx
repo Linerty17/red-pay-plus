@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,9 +28,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX } from 'lucide-react';
+import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+
+const PAGE_SIZE = 25;
 
 interface User {
   id: string;
@@ -49,9 +52,14 @@ interface User {
   created_at: string;
 }
 
+interface UserCounts {
+  total: number;
+  rpcPurchased: number;
+  active: number;
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -61,6 +69,9 @@ export default function AdminUsers() {
   const [banAction, setBanAction] = useState<'ban' | 'unban'>('ban');
   const [saving, setSaving] = useState(false);
   const [banning, setBanning] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [counts, setCounts] = useState<UserCounts>({ total: 0, rpcPurchased: 0, active: 0 });
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -76,23 +87,43 @@ export default function AdminUsers() {
   });
 
   useEffect(() => {
-    fetchUsers();
+    fetchInitialData();
   }, []);
 
-  useEffect(() => {
-    filterUsers();
-  }, [searchTerm, users]);
+  const fetchInitialData = async () => {
+    await Promise.all([fetchUsers(0, true), fetchCounts()]);
+  };
 
-  const fetchUsers = async () => {
+  const fetchCounts = async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('rpc_purchased, status');
+    
+    if (!error && data) {
+      setCounts({
+        total: data.length,
+        rpcPurchased: data.filter(u => u.rpc_purchased).length,
+        active: data.filter(u => u.status === 'Active' || !u.status).length,
+      });
+    }
+  };
+
+  const fetchUsers = async (pageNum: number, reset: boolean = false) => {
     try {
-      setLoading(true);
+      if (reset) setLoading(true);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      const newUsers = data || [];
+      setUsers(prev => reset ? newUsers : [...prev, ...newUsers]);
+      setHasMore(newUsers.length === PAGE_SIZE);
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to fetch users');
@@ -101,24 +132,26 @@ export default function AdminUsers() {
     }
   };
 
-  const filterUsers = () => {
-    if (!searchTerm) {
-      setFilteredUsers(users);
-      return;
-    }
+  const loadMore = useCallback(async () => {
+    await fetchUsers(page + 1);
+  }, [page]);
 
-    const term = searchTerm.toLowerCase();
-    const filtered = users.filter(
-      (user) =>
-        user.first_name.toLowerCase().includes(term) ||
-        user.last_name.toLowerCase().includes(term) ||
-        user.email.toLowerCase().includes(term) ||
-        user.user_id.toLowerCase().includes(term) ||
-        user.phone.includes(term) ||
-        (user.rpc_code && user.rpc_code.toLowerCase().includes(term))
-    );
-    setFilteredUsers(filtered);
-  };
+  const { loadMoreRef, isLoading: isLoadingMore } = useInfiniteScroll(loadMore, hasMore);
+
+  // Filter users from loaded data (client-side filtering for searched term)
+  const filteredUsers = searchTerm
+    ? users.filter(user => {
+        const term = searchTerm.toLowerCase();
+        return (
+          user.first_name.toLowerCase().includes(term) ||
+          user.last_name.toLowerCase().includes(term) ||
+          user.email.toLowerCase().includes(term) ||
+          user.user_id.toLowerCase().includes(term) ||
+          user.phone.includes(term) ||
+          (user.rpc_code && user.rpc_code.toLowerCase().includes(term))
+        );
+      })
+    : users;
 
   const openEditDialog = (user: User) => {
     setSelectedUser(user);
@@ -203,7 +236,7 @@ export default function AdminUsers() {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
       // Revert on error
-      fetchUsers();
+      fetchUsers(0, true);
     } finally {
       setSaving(false);
     }
@@ -266,7 +299,7 @@ export default function AdminUsers() {
       console.error('Error updating user ban status:', error);
       toast.error('Failed to update user status');
       // Revert on error
-      fetchUsers();
+      fetchUsers(0, true);
     } finally {
       setBanning(false);
       setUserToBan(null);
@@ -288,7 +321,7 @@ export default function AdminUsers() {
           <h1 className="text-3xl font-bold">User Management</h1>
           <p className="text-muted-foreground">View and edit user accounts</p>
         </div>
-        <Button onClick={fetchUsers} variant="outline" size="sm">
+        <Button onClick={() => fetchUsers(0, true)} variant="outline" size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -301,7 +334,7 @@ export default function AdminUsers() {
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{counts.total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -309,9 +342,7 @@ export default function AdminUsers() {
             <CardTitle className="text-sm font-medium">RPC Purchased</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter((u) => u.rpc_purchased).length}
-            </div>
+            <div className="text-2xl font-bold">{counts.rpcPurchased}</div>
           </CardContent>
         </Card>
         <Card>
@@ -319,9 +350,7 @@ export default function AdminUsers() {
             <CardTitle className="text-sm font-medium">Active Users</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter((u) => u.status === 'Active').length}
-            </div>
+            <div className="text-2xl font-bold">{counts.active}</div>
           </CardContent>
         </Card>
       </div>
@@ -444,6 +473,19 @@ export default function AdminUsers() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Infinite scroll loader */}
+      <div ref={loadMoreRef} className="py-4 flex justify-center">
+        {isLoadingMore && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Loading more...</span>
+          </div>
+        )}
+        {!hasMore && users.length > 0 && !searchTerm && (
+          <p className="text-sm text-muted-foreground">All users loaded</p>
+        )}
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
