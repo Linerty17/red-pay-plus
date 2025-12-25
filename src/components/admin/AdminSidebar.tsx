@@ -34,12 +34,14 @@ export function AdminSidebar() {
   const { signOut } = useAdminAuth();
   const currentPath = location.pathname;
   const [pendingCount, setPendingCount] = useState(0);
+  const [bannedCount, setBannedCount] = useState(0);
 
   useEffect(() => {
     fetchPendingCount();
+    fetchBannedCount();
     
-    // Subscribe to real-time updates
-    const channel = supabase
+    // Subscribe to real-time updates for payments
+    const paymentsChannel = supabase
       .channel('admin-pending-payments')
       .on(
         'postgres_changes',
@@ -54,8 +56,25 @@ export function AdminSidebar() {
       )
       .subscribe();
 
+    // Subscribe to real-time updates for banned users
+    const usersChannel = supabase
+      .channel('admin-banned-users-count')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users'
+        },
+        () => {
+          fetchBannedCount();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(paymentsChannel);
+      supabase.removeChannel(usersChannel);
     };
   }, []);
 
@@ -68,12 +87,21 @@ export function AdminSidebar() {
     setPendingCount(count || 0);
   };
 
+  const fetchBannedCount = async () => {
+    const { count } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'Banned');
+    
+    setBannedCount(count || 0);
+  };
+
   const isActive = (path: string) => currentPath === path;
 
   const menuItems = [
     { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
     { title: 'Users', url: '/admin/users', icon: Users },
-    { title: 'Banned Users', url: '/admin/banned-users', icon: ShieldX },
+    { title: 'Banned Users', url: '/admin/banned-users', icon: ShieldX, badge: bannedCount, badgeVariant: 'destructive' },
     { title: 'Referrals', url: '/admin/referrals', icon: Users },
     { title: 'Payments', url: '/admin/payments', icon: CreditCard, highlight: true, badge: pendingCount },
     { title: 'Transactions', url: '/admin/transactions', icon: Receipt },
