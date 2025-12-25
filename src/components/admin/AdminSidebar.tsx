@@ -7,7 +7,8 @@ import {
   Bell, 
   FileText,
   LogOut,
-  Settings
+  Settings,
+  ShieldX
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -72,6 +73,7 @@ export function AdminSidebar() {
   const menuItems = [
     { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
     { title: 'Users', url: '/admin/users', icon: Users },
+    { title: 'Banned Users', url: '/admin/banned-users', icon: ShieldX },
     { title: 'Referrals', url: '/admin/referrals', icon: Users },
     { title: 'Payments', url: '/admin/payments', icon: CreditCard, highlight: true, badge: pendingCount },
     { title: 'Transactions', url: '/admin/transactions', icon: Receipt },

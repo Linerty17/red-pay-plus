@@ -24,6 +24,7 @@ interface Payment {
   rpc_code_issued: string | null;
   created_at: string;
   status?: string;
+  user_status?: string; // Track if user is banned
 }
 
 interface PaymentCounts {
@@ -186,9 +187,22 @@ export default function AdminPayments() {
 
       if (error) throw error;
       
-      const newPayments = data || [];
-      setPayments(prev => reset ? newPayments : [...prev, ...newPayments]);
-      setHasMore(newPayments.length === PAGE_SIZE);
+      // Fetch user statuses for all payments to filter out banned users
+      const userIds = [...new Set((data || []).map(p => p.user_id))];
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('user_id, status')
+        .in('user_id', userIds);
+      
+      const userStatusMap = new Map(usersData?.map(u => [u.user_id, u.status]) || []);
+      
+      const paymentsWithStatus = (data || []).map(p => ({
+        ...p,
+        user_status: userStatusMap.get(p.user_id) || 'Active'
+      }));
+      
+      setPayments(prev => reset ? paymentsWithStatus : [...prev, ...paymentsWithStatus]);
+      setHasMore((data || []).length === PAGE_SIZE);
       setPage(pageNum);
     } catch (error: any) {
       toast.error('Failed to load payments');
@@ -307,7 +321,10 @@ export default function AdminPayments() {
     }
   };
 
-  const pendingPayments = payments.filter(p => p.status === 'pending' || (!p.verified && !p.status));
+  // Filter out banned users from pending payments - they should appear in banned users page only
+  const pendingPayments = payments.filter(p => 
+    (p.status === 'pending' || (!p.verified && !p.status)) && p.user_status !== 'Banned'
+  );
   const approvedPayments = payments.filter(p => p.status === 'approved');
   const rejectedPayments = payments.filter(p => p.status === 'rejected');
   const cancelledPayments = payments.filter(p => p.status === 'cancelled');
@@ -674,6 +691,13 @@ export default function AdminPayments() {
                       details: { user_name: userToBan.userName, reason: 'Banned from payments page' },
                     });
                   }
+
+                  // Update the user_status in payments list so banned user disappears from pending
+                  setPayments(prev => prev.map(p => 
+                    p.user_id === userToBan.userId 
+                      ? { ...p, user_status: 'Banned' } 
+                      : p
+                  ));
 
                   toast.success(`${userToBan.userName} has been banned`);
                   setBanDialogOpen(false);
