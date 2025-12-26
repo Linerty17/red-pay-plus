@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { DollarSign, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { DollarSign, Loader2, CheckCircle2, XCircle, ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,6 +145,7 @@ const Withdraw = () => {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [bankOpen, setBankOpen] = useState(false);
 
   // Bank codes for Paystack verification (comprehensive Nigerian banks list)
   const bankCodes: Record<string, string> = {
@@ -422,18 +425,47 @@ const Withdraw = () => {
               {/* Bank Selection */}
               <div className="space-y-1">
                 <Label htmlFor="bank" className="text-xs">Select Bank</Label>
-                <Select value={formData.bank} onValueChange={(value) => setFormData({ ...formData, bank: value })}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Choose bank" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.map((bank) => (
-                      <SelectItem key={bank} value={bank}>
-                        {bank}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={bankOpen} onOpenChange={setBankOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={bankOpen}
+                      className="w-full h-9 justify-between font-normal"
+                    >
+                      {formData.bank || "Search and select bank..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0 bg-popover z-50" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search bank..." />
+                      <CommandList>
+                        <CommandEmpty>No bank found.</CommandEmpty>
+                        <CommandGroup className="max-h-64 overflow-y-auto">
+                          {banks.map((bank) => (
+                            <CommandItem
+                              key={bank}
+                              value={bank}
+                              onSelect={(currentValue) => {
+                                setFormData({ ...formData, bank: currentValue === formData.bank ? "" : bank });
+                                setBankOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.bank === bank ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {bank}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Amount */}
