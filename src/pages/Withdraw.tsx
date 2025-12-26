@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -141,12 +141,69 @@ const Withdraw = () => {
     accessCode: "",
   });
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const banks = [
-    "Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank",
-    "Stanbic IBTC", "Fidelity Bank", "Union Bank", "Sterling Bank",
-    "Wema Bank", "Moniepoint", "Opay", "Kuda", "Palmpay"
-  ];
+  // Bank codes for Paystack verification
+  const bankCodes: Record<string, string> = {
+    "Access Bank": "044",
+    "GTBank": "058",
+    "First Bank": "011",
+    "UBA": "033",
+    "Zenith Bank": "057",
+    "Stanbic IBTC": "221",
+    "Fidelity Bank": "070",
+    "Union Bank": "032",
+    "Sterling Bank": "232",
+    "Wema Bank": "035",
+    "Moniepoint": "50515",
+    "Opay": "999992",
+    "Kuda": "50211",
+    "Palmpay": "999991"
+  };
+
+  const banks = Object.keys(bankCodes);
+
+  // Verify account when account number and bank are both provided
+  const verifyAccount = useCallback(async (accountNumber: string, bank: string) => {
+    const bankCode = bankCodes[bank];
+    if (!bankCode || accountNumber.length !== 10) return;
+
+    setVerifying(true);
+    setVerificationStatus('idle');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-account', {
+        body: { accountNumber, bankCode }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.accountName) {
+        setFormData(prev => ({ ...prev, accountName: data.accountName }));
+        setVerificationStatus('success');
+        toast.success(`Account verified: ${data.accountName}`);
+      } else {
+        setVerificationStatus('error');
+        toast.error("Could not verify account. Please enter name manually.");
+      }
+    } catch (error) {
+      console.error('Account verification error:', error);
+      setVerificationStatus('error');
+      toast.error("Verification failed. Please enter account name manually.");
+    } finally {
+      setVerifying(false);
+    }
+  }, []);
+
+  // Trigger verification when account number reaches 10 digits and bank is selected
+  useEffect(() => {
+    if (formData.accountNumber.length === 10 && formData.bank) {
+      verifyAccount(formData.accountNumber, formData.bank);
+    } else {
+      setVerificationStatus('idle');
+    }
+  }, [formData.accountNumber, formData.bank, verifyAccount]);
 
   const handleWithdraw = async () => {
     if (!profile) {
@@ -305,14 +362,23 @@ const Withdraw = () => {
 
               {/* Account Name */}
               <div className="space-y-1">
-                <Label htmlFor="accountName" className="text-xs">Account Name</Label>
+                <Label htmlFor="accountName" className="text-xs flex items-center gap-2">
+                  Account Name
+                  {verifying && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                  {verificationStatus === 'success' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                  {verificationStatus === 'error' && <XCircle className="h-3 w-3 text-destructive" />}
+                </Label>
                 <Input
                   id="accountName"
-                  placeholder="John Doe"
+                  placeholder={verifying ? "Verifying..." : "John Doe"}
                   value={formData.accountName}
                   onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                  className="h-9"
+                  className={`h-9 ${verificationStatus === 'success' ? 'border-green-500 bg-green-500/10' : ''}`}
+                  disabled={verifying}
                 />
+                {verificationStatus === 'success' && (
+                  <p className="text-xs text-green-600">✓ Account verified via Paystack</p>
+                )}
               </div>
 
               {/* Bank Selection */}
