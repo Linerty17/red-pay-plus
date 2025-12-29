@@ -67,7 +67,7 @@ export function AdminLayout() {
   }
 
   if (!isAdmin) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/ifechukwu/login" replace />;
   }
 
   // Show PIN verification screen after successful login

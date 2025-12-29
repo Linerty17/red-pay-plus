@@ -53,7 +53,7 @@ export default function AdminSettingsProtected() {
       
       if (attempts >= 2) {
         toast.error('Too many failed attempts. Please try again later.');
-        navigate('/admin/dashboard');
+        navigate('/ifechukwu/dashboard');
       }
     }
   };
@@ -107,7 +107,7 @@ export default function AdminSettingsProtected() {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => navigate('/ifechukwu/dashboard')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
