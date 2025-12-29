@@ -23,10 +23,12 @@ const PaymentInstructions = () => {
   const [timeElapsed, setTimeElapsed] = useState({ minutes: 0, seconds: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [amount, setAmount] = useState("6,700");
-  const [accountNumber, setAccountNumber] = useState("5972862604");
-  const [bankName, setBankName] = useState("Moniepoint MFB");
-  const [accountName, setAccountName] = useState("BLESSING WILLIAMS");
+  // SECURITY: No fallback values - must be loaded from database
+  const [amount, setAmount] = useState<string | null>(null);
+  const [accountNumber, setAccountNumber] = useState<string | null>(null);
+  const [bankName, setBankName] = useState<string | null>(null);
+  const [accountName, setAccountName] = useState<string | null>(null);
+  const [settingsError, setSettingsError] = useState(false);
 
   useEffect(() => {
     fetchPaymentSettings();
@@ -105,10 +107,37 @@ const PaymentInstructions = () => {
 
       if (error) throw error;
 
+      // SECURITY: Validate all required settings are present
+      const requiredKeys = ['payment_amount', 'account_number', 'bank_name', 'account_name'];
+      const foundKeys = data?.map(s => s.key) || [];
+      const missingKeys = requiredKeys.filter(k => !foundKeys.includes(k));
+      
+      if (missingKeys.length > 0) {
+        console.error('SECURITY: Missing payment settings:', missingKeys);
+        setSettingsError(true);
+        toast.error('Payment configuration error. Please contact support.');
+        return;
+      }
+
+      // SECURITY: Validate each setting has a non-empty value
+      for (const setting of data || []) {
+        if (!setting.value || setting.value.trim() === '') {
+          console.error('SECURITY: Empty payment setting:', setting.key);
+          setSettingsError(true);
+          toast.error('Payment configuration error. Please contact support.');
+          return;
+        }
+      }
+
       data?.forEach((setting) => {
         switch (setting.key) {
           case 'payment_amount':
             const num = parseInt(setting.value);
+            if (isNaN(num) || num <= 0) {
+              console.error('SECURITY: Invalid payment amount');
+              setSettingsError(true);
+              return;
+            }
             setAmount(num.toLocaleString());
             break;
           case 'account_number':
@@ -123,7 +152,9 @@ const PaymentInstructions = () => {
         }
       });
     } catch (error) {
-      console.error('Error fetching payment settings:', error);
+      console.error('SECURITY: Error fetching payment settings:', error);
+      setSettingsError(true);
+      toast.error('Failed to load payment details. Please try again later.');
     } finally {
       setLoadingSettings(false);
     }
@@ -602,13 +633,61 @@ const PaymentInstructions = () => {
     );
   }
 
-  if (loading || checkingStatus) {
+  if (loading || checkingStatus || loadingSettings) {
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
         <div className="relative z-10">
-          <LoadingSpinner message={loading ? "Submitting Payment" : "Checking Status"} />
+          <LoadingSpinner message={loading ? "Submitting Payment" : loadingSettings ? "Loading Payment Details" : "Checking Status"} />
         </div>
+      </div>
+    );
+  }
+
+  // SECURITY: Block payment form if settings failed to load
+  if (settingsError || !amount || !accountNumber || !bankName || !accountName) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center p-4">
+        <LiquidBackground />
+        <Card className="relative z-10 bg-card/90 backdrop-blur-sm border-destructive/30 max-w-md w-full">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto">
+              <XCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-destructive">Configuration Error</h2>
+              <p className="text-sm text-muted-foreground">
+                Payment details could not be loaded. Please contact support or try again later.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => window.location.reload()}
+                className="w-full" 
+                size="lg"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+              <Button 
+                onClick={openTelegramSupport}
+                variant="outline"
+                className="w-full" 
+                size="lg"
+              >
+                Contact Support
+              </Button>
+              <Button 
+                onClick={() => navigate('/dashboard')}
+                variant="ghost"
+                className="w-full" 
+                size="lg"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
