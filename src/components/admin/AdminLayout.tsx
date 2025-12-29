@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminErrorBoundary } from './AdminErrorBoundary';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { supabase } from '@/integrations/supabase/client';
 import adminLogo from '@/assets/admin-logo.png';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,18 +13,41 @@ import { Lock, ShieldCheck, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
-const ACCESS_PIN = '9111';
+const DEFAULT_PIN = '9111';
 
 export function AdminLayout() {
   const { isAdmin, loading, signOut } = useAdminAuth();
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [pin, setPin] = useState('');
   const [attempts, setAttempts] = useState(0);
+  const [accessPin, setAccessPin] = useState<string | null>(null);
+  const [loadingPin, setLoadingPin] = useState(true);
+
+  useEffect(() => {
+    const fetchPin = async () => {
+      try {
+        const { data } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'admin_pin')
+          .maybeSingle();
+        
+        setAccessPin(data?.value || DEFAULT_PIN);
+      } catch (error) {
+        console.error('Error fetching admin PIN:', error);
+        setAccessPin(DEFAULT_PIN);
+      } finally {
+        setLoadingPin(false);
+      }
+    };
+    
+    fetchPin();
+  }, []);
 
   const handlePinComplete = (value: string) => {
     setPin(value);
     
-    if (value === ACCESS_PIN) {
+    if (value === accessPin) {
       setIsPinVerified(true);
       toast.success('Access granted');
     } else if (value.length === 4) {
@@ -38,7 +62,7 @@ export function AdminLayout() {
     }
   };
 
-  if (loading) {
+  if (loading || loadingPin) {
     return <LoadingSpinner />;
   }
 
