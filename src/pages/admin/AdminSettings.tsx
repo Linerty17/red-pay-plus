@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Video, Save, ExternalLink, CreditCard, Key } from 'lucide-react';
+import { Video, Save, ExternalLink, CreditCard, Key, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
@@ -22,6 +22,10 @@ export default function AdminSettings() {
   // RPC settings
   const [rpcAccessCode, setRpcAccessCode] = useState('');
   const [savingRpc, setSavingRpc] = useState(false);
+
+  // Admin PIN settings
+  const [adminPin, setAdminPin] = useState('');
+  const [savingPin, setSavingPin] = useState(false);
 
   useEffect(() => {
     fetchAllSettings();
@@ -55,6 +59,9 @@ export default function AdminSettings() {
             break;
           case 'rpc_code':
             setRpcAccessCode(setting.value);
+            break;
+          case 'admin_pin':
+            setAdminPin(setting.value);
             break;
         }
       });
@@ -156,6 +163,34 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveAdminPin = async () => {
+    if (!adminPin.trim()) {
+      toast.error('Please enter an admin PIN');
+      return;
+    }
+
+    if (adminPin.length !== 4 || !/^\d+$/.test(adminPin)) {
+      toast.error('PIN must be exactly 4 digits');
+      return;
+    }
+
+    setSavingPin(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'admin_pin', value: adminPin.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      toast.success('Admin PIN updated successfully');
+    } catch (error) {
+      console.error('Error saving admin PIN:', error);
+      toast.error('Failed to save admin PIN');
+    } finally {
+      setSavingPin(false);
+    }
+  };
+
   const extractVideoId = (url: string): string | null => {
     const match = url.match(/video=([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
@@ -226,6 +261,42 @@ export default function AdminSettings() {
             <Save className="h-4 w-4 mr-2" />
             {savingPayment ? 'Saving...' : 'Update Payment Details'}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Admin PIN Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            Admin Access PIN
+          </CardTitle>
+          <CardDescription>
+            Change the 4-digit PIN required to access the admin panel after login
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="adminPin">Access PIN (4 digits)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="adminPin"
+                type="password"
+                placeholder="Enter 4-digit PIN"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                maxLength={4}
+                disabled={loading}
+              />
+              <Button onClick={handleSaveAdminPin} disabled={savingPin || loading}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingPin ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This PIN is required after admin login to access the dashboard
+            </p>
+          </div>
         </CardContent>
       </Card>
 
