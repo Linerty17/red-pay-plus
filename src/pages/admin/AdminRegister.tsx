@@ -98,29 +98,9 @@ export default function AdminRegister() {
         <CardContent className="space-y-4">
           {!registered ? (
             <>
-              <div className="space-y-2 p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="font-mono font-medium">{ADMIN_EMAIL}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Password:</span>
-                  <span className="font-mono font-medium">{'•'.repeat(ADMIN_PASSWORD.length)}</span>
-                </div>
-              </div>
-
               <div className="text-sm text-muted-foreground text-center">
-                Click below to create your permanent admin account with the pre-configured credentials.
+                Admin registration is currently disabled.
               </div>
-
-              <Button 
-                onClick={createAdminAccount} 
-                className="w-full" 
-                disabled={loading}
-                size="lg"
-              >
-                {loading ? 'Creating Account...' : 'Create Admin Account'}
-              </Button>
 
               <div className="text-center">
                 <Button 
@@ -128,7 +108,7 @@ export default function AdminRegister() {
                   onClick={() => navigate('/admin/login')}
                   className="text-sm"
                 >
-                  Already have an account? Login
+                  Go to Login
                 </Button>
               </div>
             </>
