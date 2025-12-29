@@ -13,7 +13,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
 
   // Payment settings
-  const [paymentAmount, setPaymentAmount] = useState('6700');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankName, setBankName] = useState('');
   const [accountName, setAccountName] = useState('');
