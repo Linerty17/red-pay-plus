@@ -11,7 +11,7 @@ const Community = () => {
   };
 
   const handleJoinTelegram = () => {
-    window.open("https://t.me/Skypay261", "_blank");
+    window.open("https://t.me/OfficialChixx9ja", "_blank");
   };
 
   return (
