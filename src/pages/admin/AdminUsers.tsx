@@ -610,17 +610,6 @@ export default function AdminUsers() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="balance">Balance (₦)</Label>
-              <Input
-                id="balance"
-                type="number"
-                value={editForm.balance}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })
-                }
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="rpc_code">RPC Code</Label>
