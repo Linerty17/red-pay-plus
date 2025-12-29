@@ -32,7 +32,7 @@ export default function AdminLogin() {
           .maybeSingle();
 
         if (roleData) {
-          navigate('/admin/dashboard', { replace: true });
+          navigate('/ifechukwu/dashboard', { replace: true });
           return;
         }
       }
@@ -98,7 +98,7 @@ export default function AdminLogin() {
       }
 
       toast.success('Login successful');
-      navigate('/admin/dashboard');
+      navigate('/ifechukwu/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error('An unexpected error occurred. Please try again.');
@@ -158,7 +158,7 @@ export default function AdminLogin() {
               {loading ? 'Logging in...' : 'Login'}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              First time? <a href="/admin/register" className="text-primary hover:underline">Create account</a>
+              First time? <a href="/ifechukwu/register" className="text-primary hover:underline">Create account</a>
             </div>
           </form>
         </CardContent>

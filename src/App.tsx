@@ -68,10 +68,10 @@ const App = () => {
               <Route path="/refer-earn" element={<ReferEarn />} />
               <Route path="/notifications" element={<Notifications />} />
               
-              {/* Admin Routes */}
-              <Route path="/admin/register" element={<AdminRegister />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminLayout />}>
+              {/* Admin Routes - secured path */}
+              <Route path="/ifechukwu/register" element={<AdminRegister />} />
+              <Route path="/ifechukwu/login" element={<AdminLogin />} />
+              <Route path="/ifechukwu" element={<AdminLayout />}>
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="referrals" element={<AdminReferrals />} />

@@ -28,7 +28,7 @@ export default function AdminRegister() {
 
       if (existingUser.user) {
         toast.success('Account already exists! Redirecting to login...');
-        setTimeout(() => navigate('/admin/login'), 1500);
+        setTimeout(() => navigate('/ifechukwu/login'), 1500);
         return;
       }
     } catch (existError) {
@@ -41,7 +41,7 @@ export default function AdminRegister() {
         email: ADMIN_EMAIL,
         password: ADMIN_PASSWORD,
         options: {
-          emailRedirectTo: `${window.location.origin}/admin/dashboard`,
+          emailRedirectTo: `${window.location.origin}/ifechukwu/dashboard`,
           data: {
             is_admin: true
           }
@@ -52,7 +52,7 @@ export default function AdminRegister() {
         // Check if it's because user already exists
         if (error.message.includes('already registered')) {
           toast.success('Account already exists! Please login.');
-          setTimeout(() => navigate('/admin/login'), 1500);
+          setTimeout(() => navigate('/ifechukwu/login'), 1500);
           return;
         }
         throw error;
@@ -71,9 +71,9 @@ export default function AdminRegister() {
           });
 
           if (!signInError) {
-            navigate('/admin/dashboard');
+            navigate('/ifechukwu/dashboard');
           } else {
-            navigate('/admin/login');
+            navigate('/ifechukwu/login');
           }
         }, 2000);
       }
@@ -105,7 +105,7 @@ export default function AdminRegister() {
               <div className="text-center">
                 <Button 
                   variant="link" 
-                  onClick={() => navigate('/admin/login')}
+                  onClick={() => navigate('/ifechukwu/login')}
                   className="text-sm"
                 >
                   Go to Login

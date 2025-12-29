@@ -99,16 +99,16 @@ export function AdminSidebar() {
   const isActive = (path: string) => currentPath === path;
 
   const menuItems = [
-    { title: 'Dashboard', url: '/admin/dashboard', icon: LayoutDashboard },
-    { title: 'Users', url: '/admin/users', icon: Users },
-    { title: 'Banned Users', url: '/admin/banned-users', icon: ShieldX, badge: bannedCount, badgeVariant: 'destructive' },
-    { title: 'Referrals', url: '/admin/referrals', icon: Users },
-    { title: 'Payments', url: '/admin/payments', icon: CreditCard, highlight: true, badge: pendingCount },
-    { title: 'Transactions', url: '/admin/transactions', icon: Receipt },
-    { title: 'Send Push', url: '/admin/push', icon: Bell },
-    { title: 'Notification Stats', url: '/admin/notifications', icon: Bell },
-    { title: 'Audit Logs', url: '/admin/audit', icon: FileText },
-    { title: 'Settings', url: '/admin/settings', icon: Settings },
+    { title: 'Dashboard', url: '/ifechukwu/dashboard', icon: LayoutDashboard },
+    { title: 'Users', url: '/ifechukwu/users', icon: Users },
+    { title: 'Banned Users', url: '/ifechukwu/banned-users', icon: ShieldX, badge: bannedCount, badgeVariant: 'destructive' },
+    { title: 'Referrals', url: '/ifechukwu/referrals', icon: Users },
+    { title: 'Payments', url: '/ifechukwu/payments', icon: CreditCard, highlight: true, badge: pendingCount },
+    { title: 'Transactions', url: '/ifechukwu/transactions', icon: Receipt },
+    { title: 'Send Push', url: '/ifechukwu/push', icon: Bell },
+    { title: 'Notification Stats', url: '/ifechukwu/notifications', icon: Bell },
+    { title: 'Audit Logs', url: '/ifechukwu/audit', icon: FileText },
+    { title: 'Settings', url: '/ifechukwu/settings', icon: Settings },
   ];
 
   return (
