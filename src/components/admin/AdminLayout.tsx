@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AdminSidebar } from './AdminSidebar';
@@ -5,9 +6,37 @@ import { AdminErrorBoundary } from './AdminErrorBoundary';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import adminLogo from '@/assets/admin-logo.png';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Lock, ShieldCheck, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+
+const ACCESS_PIN = '9111';
 
 export function AdminLayout() {
   const { isAdmin, loading, signOut } = useAdminAuth();
+  const [isPinVerified, setIsPinVerified] = useState(false);
+  const [pin, setPin] = useState('');
+  const [attempts, setAttempts] = useState(0);
+
+  const handlePinComplete = (value: string) => {
+    setPin(value);
+    
+    if (value === ACCESS_PIN) {
+      setIsPinVerified(true);
+      toast.success('Access granted');
+    } else if (value.length === 4) {
+      setAttempts(prev => prev + 1);
+      toast.error('Invalid PIN');
+      setPin('');
+      
+      if (attempts >= 2) {
+        toast.error('Too many failed attempts. Logging out.');
+        signOut();
+      }
+    }
+  };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -15,6 +44,61 @@ export function AdminLayout() {
 
   if (!isAdmin) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  // Show PIN verification screen after successful login
+  if (!isPinVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <img src={adminLogo} alt="RedPay Admin" className="h-16 mx-auto mb-4" />
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Lock className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="flex items-center justify-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Security Verification
+            </CardTitle>
+            <CardDescription>
+              Enter the 4-digit access PIN to continue
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={4}
+                value={pin}
+                onChange={handlePinComplete}
+                autoFocus
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} className="w-14 h-14 text-2xl" />
+                  <InputOTPSlot index={1} className="w-14 h-14 text-2xl" />
+                  <InputOTPSlot index={2} className="w-14 h-14 text-2xl" />
+                  <InputOTPSlot index={3} className="w-14 h-14 text-2xl" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            
+            {attempts > 0 && (
+              <p className="text-center text-sm text-destructive">
+                {3 - attempts} attempts remaining
+              </p>
+            )}
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={signOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
