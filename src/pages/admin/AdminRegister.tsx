@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import adminLogo from '@/assets/admin-logo.png';
 
-const ADMIN_EMAIL = 'skypayservice26@gmail.com';
-const ADMIN_PASSWORD = 'Chinemerem2007';
+const ADMIN_EMAIL = 'sundaychinemerem266@gmail.com';
+const ADMIN_PASSWORD = 'Chinemerem19$';
 
 export default function AdminRegister() {
   const [loading, setLoading] = useState(false);
