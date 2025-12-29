@@ -34,7 +34,7 @@ import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminPush from "./pages/admin/AdminPush";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminAudit from "./pages/admin/AdminAudit";
-import AdminSettings from "./pages/admin/AdminSettings";
+import AdminSettingsProtected from "./pages/admin/AdminSettingsProtected";
 import AdminBannedUsers from "./pages/admin/AdminBannedUsers";
 
 const queryClient = new QueryClient();
@@ -80,7 +80,7 @@ const App = () => {
                 <Route path="push" element={<AdminPush />} />
                 <Route path="notifications" element={<AdminNotifications />} />
                 <Route path="audit" element={<AdminAudit />} />
-                <Route path="settings" element={<AdminSettings />} />
+                <Route path="settings" element={<AdminSettingsProtected />} />
                 <Route path="banned-users" element={<AdminBannedUsers />} />
               </Route>
               
