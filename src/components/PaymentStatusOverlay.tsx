@@ -258,7 +258,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
               </Button>
               
               <Button 
-                onClick={() => window.open('https://t.me/redpaysupport', '_blank')}
+                onClick={() => window.open('https://t.me/OfficialChixx9ja', '_blank')}
                 variant="outline"
                 className="w-full border-destructive/30 hover:bg-destructive/10" 
                 size="lg"
@@ -333,7 +333,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
               </Button>
               
               <Button 
-                onClick={() => window.open('https://t.me/redpaysupport', '_blank')}
+                onClick={() => window.open('https://t.me/OfficialChixx9ja', '_blank')}
                 variant="outline"
                 className="w-full border-orange-500/30 hover:bg-orange-500/10" 
                 size="lg"

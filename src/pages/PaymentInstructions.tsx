@@ -258,7 +258,7 @@ const PaymentInstructions = () => {
   };
 
   const openTelegramSupport = () => {
-    window.open('https://t.me/redpaysupport', '_blank');
+    window.open('https://t.me/OfficialChixx9ja', '_blank');
   };
 
   // Get user's RPC code from users table
