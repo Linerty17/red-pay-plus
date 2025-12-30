@@ -79,15 +79,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch valid access code from settings table
+    // Fetch valid access code from private_settings table (secure admin-only table)
     const { data: settingData, error: settingError } = await supabase
-      .from('settings')
+      .from('private_settings')
       .select('value')
       .eq('key', 'rpc_access_code')
       .single();
 
     if (settingError || !settingData) {
-      console.error('Failed to fetch RPC access code from settings:', settingError);
+      console.error('Failed to fetch RPC access code from private_settings:', settingError);
       return new Response(
         JSON.stringify({ error: 'System configuration error', success: false }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
