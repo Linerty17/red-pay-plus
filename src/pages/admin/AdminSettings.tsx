@@ -4,20 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Video, Save, ExternalLink, CreditCard, Key, ShieldCheck } from 'lucide-react';
+import { Video, Save, ExternalLink, Key, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AdminSettings() {
   const [videoLink, setVideoLink] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  // Payment settings
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [savingPayment, setSavingPayment] = useState(false);
 
   // RPC settings
   const [rpcAccessCode, setRpcAccessCode] = useState('');
@@ -44,18 +37,6 @@ export default function AdminSettings() {
         switch (setting.key) {
           case 'video_link':
             setVideoLink(setting.value);
-            break;
-          case 'payment_amount':
-            setPaymentAmount(setting.value);
-            break;
-          case 'account_number':
-            setAccountNumber(setting.value);
-            break;
-          case 'bank_name':
-            setBankName(setting.value);
-            break;
-          case 'account_name':
-            setAccountName(setting.value);
             break;
           case 'rpc_code':
             setRpcAccessCode(setting.value);
@@ -106,37 +87,6 @@ export default function AdminSettings() {
       toast.error('Failed to save video link');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSavePaymentDetails = async () => {
-    if (!accountNumber.trim() || !bankName.trim() || !accountName.trim()) {
-      toast.error('Please fill in all payment details');
-      return;
-    }
-
-    setSavingPayment(true);
-    try {
-      const updates = [
-        { key: 'payment_amount', value: paymentAmount.trim(), updated_at: new Date().toISOString() },
-        { key: 'account_number', value: accountNumber.trim(), updated_at: new Date().toISOString() },
-        { key: 'bank_name', value: bankName.trim(), updated_at: new Date().toISOString() },
-        { key: 'account_name', value: accountName.trim(), updated_at: new Date().toISOString() },
-      ];
-
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('settings')
-          .upsert(update, { onConflict: 'key' });
-        if (error) throw error;
-      }
-
-      toast.success('Payment details updated successfully');
-    } catch (error) {
-      console.error('Error saving payment details:', error);
-      toast.error('Failed to save payment details');
-    } finally {
-      setSavingPayment(false);
     }
   };
 
@@ -202,67 +152,6 @@ export default function AdminSettings() {
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage app settings and configurations</p>
       </div>
-
-      {/* Payment Details Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-primary" />
-            Payment Details
-          </CardTitle>
-          <CardDescription>
-            Configure the bank account details shown on the payment instructions page
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="paymentAmount">Payment Amount (₦)</Label>
-              <Input
-                id="paymentAmount"
-                placeholder="6700"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="accountNumber">Account Number</Label>
-              <Input
-                id="accountNumber"
-                placeholder="Enter account number"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bankName">Bank Name</Label>
-              <Input
-                id="bankName"
-                placeholder="Enter bank name"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="accountName">Account Name</Label>
-              <Input
-                id="accountName"
-                placeholder="Enter account name"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-          </div>
-          <Button onClick={handleSavePaymentDetails} disabled={savingPayment || loading}>
-            <Save className="h-4 w-4 mr-2" />
-            {savingPayment ? 'Saving...' : 'Update Payment Details'}
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Admin PIN Card */}
       <Card>
