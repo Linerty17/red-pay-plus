@@ -11,6 +11,10 @@ const Community = () => {
   };
 
   const handleJoinTelegram = () => {
+    window.open("https://t.me/Skypay261", "_blank");
+  };
+
+  const handleTelegramSupport = () => {
     window.open("https://t.me/OfficialChixx9ja", "_blank");
   };
 
@@ -33,7 +37,7 @@ const Community = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           {/* WhatsApp */}
           <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
             <CardContent className="p-8 text-center space-y-6">
@@ -41,9 +45,9 @@ const Community = () => {
                 <MessageCircle className="w-10 h-10 text-white" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-foreground">WhatsApp Group</h2>
+                <h2 className="text-xl font-bold text-foreground">WhatsApp Channel</h2>
                 <p className="text-muted-foreground">
-                  Join our WhatsApp group for instant updates and community discussions
+                  Join our WhatsApp channel for instant updates and announcements
                 </p>
               </div>
               <Button
@@ -57,7 +61,7 @@ const Community = () => {
             </CardContent>
           </Card>
 
-          {/* Telegram */}
+          {/* Telegram Channel */}
           <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element-delayed">
             <CardContent className="p-8 text-center space-y-6">
               <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
@@ -76,6 +80,29 @@ const Community = () => {
               >
                 <Send className="w-4 h-4 mr-2" />
                 Join Telegram
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Telegram Support */}
+          <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
+            <CardContent className="p-8 text-center space-y-6">
+              <div className="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center mx-auto">
+                <Send className="w-10 h-10 text-white" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-foreground">Telegram Support</h2>
+                <p className="text-muted-foreground">
+                  Contact our support team directly via Telegram for help
+                </p>
+              </div>
+              <Button
+                onClick={handleTelegramSupport}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                size="lg"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                @OfficialChixx9ja
               </Button>
             </CardContent>
           </Card>
