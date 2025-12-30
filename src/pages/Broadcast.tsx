@@ -33,22 +33,6 @@ const Broadcast = () => {
   const [amount, setAmount] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [validAccessCode, setValidAccessCode] = useState<string | null>(null);
-
-  // Fetch valid access code from settings
-  useEffect(() => {
-    const fetchAccessCode = async () => {
-      const { data } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'rpc_access_code')
-        .single();
-      if (data) {
-        setValidAccessCode(data.value);
-      }
-    };
-    fetchAccessCode();
-  }, []);
 
   const handlePurchase = async () => {
     if (!profile) {
@@ -69,15 +53,9 @@ const Broadcast = () => {
       return;
     }
 
-    // Validate access code against database value
-    if (!validAccessCode || accessCode !== validAccessCode) {
-      navigate("/buy-rpc", { state: { invalidCode: true } });
-      return;
-    }
-
     const purchaseAmount = parseInt(amount);
 
-    // Check balance
+    // Check balance (client-side check, server will verify)
     if (purchaseAmount > (profile.balance || 0)) {
       toast.error("Insufficient balance");
       return;
@@ -85,34 +63,28 @@ const Broadcast = () => {
 
     setLoading(true);
     try {
-      const newBalance = (profile.balance || 0) - purchaseAmount;
-      
-      // Update user balance
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ balance: newBalance })
-        .eq('user_id', profile.user_id);
+      // Call secure edge function for purchase processing
+      const { data, error } = await supabase.functions.invoke('process-purchase', {
+        body: {
+          phone_number: phoneNumber,
+          amount: purchaseAmount,
+          service_type: isAirtime ? 'airtime' : 'data',
+          access_code: accessCode
+        }
+      });
 
-      if (updateError) throw updateError;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to process purchase');
+      }
 
-      // Create transaction record
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: profile.user_id,
-          title: `${isAirtime ? "Airtime" : "Data"} Purchase`,
-          amount: -purchaseAmount,
-          type: 'debit',
-          transaction_id: `${isAirtime ? 'AIR' : 'DATA'}-${Date.now()}`,
-          balance_before: profile.balance || 0,
-          balance_after: newBalance,
-          meta: {
-            phone_number: phoneNumber,
-            service_type: isAirtime ? 'airtime' : 'data'
-          }
-        });
-
-      if (transactionError) throw transactionError;
+      if (!data?.success) {
+        if (data?.error === 'invalid_access_code') {
+          navigate("/buy-rpc", { state: { invalidCode: true } });
+          return;
+        }
+        throw new Error(data?.error || 'Failed to process purchase');
+      }
 
       await refreshProfile();
       toast.success(`${isAirtime ? "Airtime" : "Data"} purchase successful!`);
