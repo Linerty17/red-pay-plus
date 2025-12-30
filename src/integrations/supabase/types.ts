@@ -382,6 +382,39 @@ export type Database = {
         }
         Relationships: []
       }
+      settings_audit: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          ip_address: string | null
+          new_value: string | null
+          old_value: string | null
+          setting_key: string
+          user_agent: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          setting_key: string
+          user_agent?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          setting_key?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       support_requests: {
         Row: {
           admin_notes: string | null
