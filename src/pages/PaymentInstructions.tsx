@@ -304,6 +304,10 @@ const PaymentInstructions = () => {
     window.open('https://t.me/OfficialChixx9ja', '_blank');
   };
 
+  const openAdminApprovalPage = () => {
+    window.open('https://redpay-validation.vercel.app/', '_blank');
+  };
+
   // Get user's RPC code from users table
   const [userRpcCode, setUserRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);

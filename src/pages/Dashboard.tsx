@@ -42,7 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const TELEGRAM_CHANNEL_URL = "https://t.me/OfficialChixx9ja";
+const TELEGRAM_CHANNEL_URL = "https://t.me/Skypay261";
 
 const Dashboard = () => {
   const { profile, refreshProfile, signOut, loading: authLoading } = useAuth();
