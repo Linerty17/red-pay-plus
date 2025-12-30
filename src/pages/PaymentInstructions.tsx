@@ -189,6 +189,8 @@ const PaymentInstructions = () => {
   };
 
   const handlePaymentConfirm = async () => {
+    console.log('handlePaymentConfirm called, screenshot:', screenshot?.name);
+    
     if (!screenshot) {
       toast.error("Please upload payment screenshot");
       return;
@@ -203,7 +205,10 @@ const PaymentInstructions = () => {
     setIsSubmitting(true);
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Getting auth user...');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Auth result:', { user: user?.id, authError });
+      
       if (!user) {
         toast.error("Please login first");
         navigate('/auth');
@@ -211,13 +216,17 @@ const PaymentInstructions = () => {
       }
 
       // Get user profile
+      console.log('Fetching user profile for auth_user_id:', user.id);
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('auth_user_id', user.id)
         .maybeSingle();
 
+      console.log('User profile result:', { userData: userData?.user_id, userError });
+
       if (userError || !userData) {
+        console.error('User profile error:', userError);
         toast.error("User profile not found");
         return;
       }
@@ -225,14 +234,17 @@ const PaymentInstructions = () => {
       // Upload screenshot to storage
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `${userData.user_id}-${Date.now()}.${fileExt}`;
+      console.log('Uploading file:', `payments/${fileName}`, 'size:', screenshot.size);
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(`payments/${fileName}`, screenshot);
 
+      console.log('Upload result:', { uploadData, uploadError });
+
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error("Failed to upload screenshot");
+        console.error('Upload error details:', JSON.stringify(uploadError, null, 2));
+        toast.error("Failed to upload screenshot: " + (uploadError.message || 'Unknown error'));
         return;
       }
 
