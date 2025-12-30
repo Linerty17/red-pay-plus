@@ -12,11 +12,11 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // RPC settings
+  // RPC settings (now from private_settings)
   const [rpcAccessCode, setRpcAccessCode] = useState('');
   const [savingRpc, setSavingRpc] = useState(false);
 
-  // Admin PIN settings
+  // Admin PIN settings (now from private_settings)
   const [adminPin, setAdminPin] = useState('');
   const [savingPin, setSavingPin] = useState(false);
 
@@ -27,17 +27,32 @@ export default function AdminSettings() {
   const fetchAllSettings = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch public settings
+      const { data: publicData, error: publicError } = await supabase
         .from('settings')
         .select('key, value');
 
-      if (error) throw error;
+      if (publicError) throw publicError;
 
-      data?.forEach((setting) => {
+      publicData?.forEach((setting) => {
+        if (setting.key === 'video_link') {
+          setVideoLink(setting.value);
+        }
+      });
+
+      // Fetch private settings (admin-only)
+      const { data: privateData, error: privateError } = await supabase
+        .from('private_settings')
+        .select('key, value');
+
+      if (privateError) {
+        console.error('Error fetching private settings:', privateError);
+        // Don't throw - admin might not have access yet
+      }
+
+      privateData?.forEach((setting) => {
         switch (setting.key) {
-          case 'video_link':
-            setVideoLink(setting.value);
-            break;
+          case 'rpc_access_code':
           case 'rpc_code':
             setRpcAccessCode(setting.value);
             break;
@@ -98,9 +113,10 @@ export default function AdminSettings() {
 
     setSavingRpc(true);
     try {
+      // Save to private_settings (admin-only table)
       const { error } = await supabase
-        .from('settings')
-        .upsert({ key: 'rpc_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        .from('private_settings')
+        .upsert({ key: 'rpc_access_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
       if (error) throw error;
 
@@ -126,8 +142,9 @@ export default function AdminSettings() {
 
     setSavingPin(true);
     try {
+      // Save to private_settings (admin-only table)
       const { error } = await supabase
-        .from('settings')
+        .from('private_settings')
         .upsert({ key: 'admin_pin', value: adminPin.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
       if (error) throw error;
@@ -197,7 +214,7 @@ export default function AdminSettings() {
             RPC Access Code
           </CardTitle>
           <CardDescription>
-            This code is displayed on the payment approval page. When you change it here, it updates everywhere.
+            This code is required for withdrawal verification. Only admins can view and update this.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -217,7 +234,7 @@ export default function AdminSettings() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              This code will be used for RPC verification across the app
+              This code is securely stored and only accessible by admins
             </p>
           </div>
         </CardContent>

@@ -17,25 +17,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
-// EmailDriver API helper
+// Secure email notification via edge function
 const sendEmailNotification = async (
   email: string,
   subject: string,
   message: string
 ) => {
   try {
-    await fetch("https://epxcpmbtgcltbjohniff.supabase.co/functions/v1/EmailDriver", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: "liberty-developer",
-        sender_name: "REDPAY LIMITED",
-        email,
-        subject,
-        message,
-      }),
+    await supabase.functions.invoke('send-email', {
+      body: { email, subject, message }
     });
   } catch (error) {
     console.error("Failed to send withdrawal email notification:", error);
