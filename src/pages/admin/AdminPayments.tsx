@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { usePaymentCounts, useGlobalRpcCode, useInvalidateAdminData } from '@/hooks/useAdminData';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PAGE_SIZE = 20;
 
@@ -35,25 +37,131 @@ interface PaymentCounts {
   cancelled: number;
 }
 
+// Memoized stat card component
+const StatCard = memo(({ title, value, color, borderColor, isLoading }: {
+  title: string;
+  value: number;
+  color?: string;
+  borderColor?: string;
+  isLoading?: boolean;
+}) => (
+  <Card className={borderColor}>
+    <CardHeader className="pb-2">
+      <CardTitle className={`text-sm font-medium ${color || 'text-muted-foreground'}`}>{title}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {isLoading ? (
+        <Skeleton className="h-8 w-16" />
+      ) : (
+        <div className={`text-2xl font-bold ${color || ''}`}>{value.toLocaleString()}</div>
+      )}
+    </CardContent>
+  </Card>
+));
+
+StatCard.displayName = 'StatCard';
+
+// Memoized payment card for pending payments
+const PendingPaymentCard = memo(({ 
+  payment, 
+  onViewImage, 
+  onApprove, 
+  onReject, 
+  processingId 
+}: {
+  payment: Payment;
+  onViewImage: (url: string | null) => void;
+  onApprove: (payment: Payment) => void;
+  onReject: (payment: Payment) => void;
+  processingId: string | null;
+}) => (
+  <Card className="border-amber-500/30">
+    <CardContent className="p-4 space-y-4">
+      {payment.proof_image ? (
+        <div 
+          className="relative h-40 bg-muted rounded-lg overflow-hidden cursor-pointer group"
+          onClick={() => onViewImage(payment.proof_image)}
+        >
+          <img 
+            src={payment.proof_image} 
+            alt="Payment proof" 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Eye className="w-8 h-8 text-white" />
+          </div>
+        </div>
+      ) : (
+        <div className="h-40 bg-muted rounded-lg flex items-center justify-center">
+          <Image className="w-8 h-8 text-muted-foreground" />
+        </div>
+      )}
+      
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold">{payment.user_name}</span>
+          <Badge variant="secondary" className="bg-amber-500/20 text-amber-500">Pending</Badge>
+        </div>
+        <p className="text-sm text-muted-foreground truncate">{payment.email}</p>
+        <p className="text-xs text-muted-foreground">{payment.phone}</p>
+      </div>
+      
+      <div className="flex gap-2">
+        <Button 
+          size="sm" 
+          className="flex-1 bg-primary hover:bg-primary/90"
+          onClick={() => onApprove(payment)}
+          disabled={processingId === payment.id}
+        >
+          {processingId === payment.id ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              <Check className="w-4 h-4 mr-1" />
+              Approve
+            </>
+          )}
+        </Button>
+        <Button 
+          size="sm" 
+          variant="destructive"
+          className="flex-1"
+          onClick={() => onReject(payment)}
+          disabled={processingId === payment.id}
+        >
+          <X className="w-4 h-4 mr-1" />
+          Reject
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+));
+
+PendingPaymentCard.displayName = 'PendingPaymentCard';
+
 export default function AdminPayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'cancel' | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [globalRpcCode, setGlobalRpcCode] = useState<string>('RPC2000122');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [counts, setCounts] = useState<PaymentCounts>({ total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 });
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [userToBan, setUserToBan] = useState<{ userId: string; userName: string; currentStatus: string } | null>(null);
   const [banning, setBanning] = useState(false);
 
+  // Use React Query for counts and RPC code
+  const { data: counts = { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 }, isLoading: countsLoading } = usePaymentCounts();
+  const { data: globalRpcCode = 'RPC2000122' } = useGlobalRpcCode();
+  const { invalidatePayments, invalidateStats } = useInvalidateAdminData();
+
   useEffect(() => {
-    fetchInitialData();
+    fetchPayments(0, true);
     
     // Subscribe to real-time updates for new payments
     const channel = supabase
@@ -85,12 +193,9 @@ export default function AdminPayments() {
                 return [paymentWithStatus, ...prev];
               });
             });
-          // Update counts
-          setCounts(prev => ({
-            ...prev,
-            total: prev.total + 1,
-            pending: prev.pending + 1
-          }));
+          // Invalidate React Query cache for counts
+          invalidatePayments();
+          invalidateStats();
           // Show notification toast
           toast.success(`New payment from ${newPayment.user_name}`, {
             description: 'A new payment has been submitted for review',
@@ -117,24 +222,10 @@ export default function AdminPayments() {
             p.id === updatedPayment.id ? { ...updatedPayment, user_status: p.user_status } : p
           ));
           
-          // Update counts based on status change
+          // Invalidate React Query cache if status changed
           if (oldPayment.status !== updatedPayment.status) {
-            setCounts(prev => {
-              const newCounts = { ...prev };
-              // Decrement old status count
-              if (oldPayment.status === 'approved') newCounts.approved--;
-              else if (oldPayment.status === 'rejected') newCounts.rejected--;
-              else if (oldPayment.status === 'cancelled') newCounts.cancelled--;
-              else newCounts.pending--;
-              
-              // Increment new status count
-              if (updatedPayment.status === 'approved') newCounts.approved++;
-              else if (updatedPayment.status === 'rejected') newCounts.rejected++;
-              else if (updatedPayment.status === 'cancelled') newCounts.cancelled++;
-              else newCounts.pending++;
-              
-              return newCounts;
-            });
+            invalidatePayments();
+            invalidateStats();
           }
         }
       )
@@ -143,7 +234,7 @@ export default function AdminPayments() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [invalidatePayments, invalidateStats]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -152,36 +243,6 @@ export default function AdminPayments() {
     setHasMore(true);
     fetchPayments(0, true);
   }, [statusFilter]);
-
-  const fetchInitialData = async () => {
-    await Promise.all([fetchPayments(0, true), fetchGlobalRpcCode(), fetchCounts()]);
-  };
-
-  const fetchCounts = async () => {
-    const { data, error } = await supabase
-      .from('rpc_purchases')
-      .select('status', { count: 'exact' });
-    
-    if (!error && data) {
-      const pending = data.filter(p => p.status === 'pending' || !p.status).length;
-      const approved = data.filter(p => p.status === 'approved').length;
-      const rejected = data.filter(p => p.status === 'rejected').length;
-      const cancelled = data.filter(p => p.status === 'cancelled').length;
-      setCounts({ total: data.length, pending, approved, rejected, cancelled });
-    }
-  };
-
-  const fetchGlobalRpcCode = async () => {
-    const { data } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'rpc_code')
-      .maybeSingle();
-    
-    if (data?.value) {
-      setGlobalRpcCode(data.value);
-    }
-  };
 
   const fetchPayments = async (pageNum: number, reset: boolean = false) => {
     try {
@@ -384,46 +445,11 @@ export default function AdminPayments() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{counts.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-amber-500/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-500">Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{counts.pending}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-primary/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Approved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{counts.approved}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-destructive/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-destructive">Rejected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{counts.rejected}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-orange-500/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-500">Cancelled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-500">{counts.cancelled}</div>
-          </CardContent>
-        </Card>
+        <StatCard title="Total" value={counts.total} isLoading={countsLoading} />
+        <StatCard title="Pending" value={counts.pending} color="text-amber-500" borderColor="border-amber-500/30" isLoading={countsLoading} />
+        <StatCard title="Approved" value={counts.approved} color="text-primary" borderColor="border-primary/30" isLoading={countsLoading} />
+        <StatCard title="Rejected" value={counts.rejected} color="text-destructive" borderColor="border-destructive/30" isLoading={countsLoading} />
+        <StatCard title="Cancelled" value={counts.cancelled} color="text-orange-500" borderColor="border-orange-500/30" isLoading={countsLoading} />
       </div>
 
       {/* Pending Payments Section */}

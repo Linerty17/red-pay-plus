@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, memo } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { AdminSidebar } from './AdminSidebar';
@@ -12,8 +12,36 @@ import { Button } from '@/components/ui/button';
 import { Lock, ShieldCheck, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { usePrefetchAdminData } from '@/hooks/useAdminData';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DEFAULT_PIN = '9111';
+
+// Memoized header component
+const AdminHeader = memo(() => (
+  <header className="h-16 border-b bg-card flex items-center px-6 gap-4">
+    <SidebarTrigger />
+    <img src={adminLogo} alt="RedPay Admin" className="h-10" />
+    <h1 className="text-xl font-bold text-foreground">RedPay Admin Dashboard</h1>
+  </header>
+));
+
+AdminHeader.displayName = 'AdminHeader';
+
+// Loading fallback for Suspense
+const PageLoadingFallback = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="space-y-4 w-full max-w-2xl px-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-4 w-64" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
+        {[1, 2, 3, 4].map(i => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 export function AdminLayout() {
   const { isAdmin, loading, signOut } = useAdminAuth();
@@ -22,6 +50,7 @@ export function AdminLayout() {
   const [attempts, setAttempts] = useState(0);
   const [accessPin, setAccessPin] = useState<string | null>(null);
   const [loadingPin, setLoadingPin] = useState(true);
+  const { prefetch } = usePrefetchAdminData();
 
   useEffect(() => {
     const fetchPin = async () => {
@@ -43,6 +72,13 @@ export function AdminLayout() {
     
     fetchPin();
   }, []);
+
+  // Prefetch admin data when PIN is verified
+  useEffect(() => {
+    if (isPinVerified) {
+      prefetch();
+    }
+  }, [isPinVerified, prefetch]);
 
   const handlePinComplete = (value: string) => {
     setPin(value);
@@ -130,14 +166,12 @@ export function AdminLayout() {
       <div className="min-h-screen flex w-full bg-background">
         <AdminSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b bg-card flex items-center px-6 gap-4">
-            <SidebarTrigger />
-            <img src={adminLogo} alt="RedPay Admin" className="h-10" />
-            <h1 className="text-xl font-bold text-foreground">RedPay Admin Dashboard</h1>
-          </header>
+          <AdminHeader />
           <main className="flex-1 p-6 overflow-auto">
             <AdminErrorBoundary>
-              <Outlet />
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Outlet />
+              </Suspense>
             </AdminErrorBoundary>
           </main>
         </div>
