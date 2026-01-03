@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, memo, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,8 +30,9 @@ import {
 } from '@/components/ui/select';
 import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useUserCounts, useInvalidateAdminData } from '@/hooks/useAdminData';
 
 const PAGE_SIZE = 25;
 
@@ -52,11 +53,115 @@ interface User {
   created_at: string;
 }
 
-interface UserCounts {
-  total: number;
-  rpcPurchased: number;
-  active: number;
-}
+// Memoized stat card
+const StatCard = memo(({ title, value, isLoading }: { title: string; value: number; isLoading?: boolean }) => (
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {isLoading ? (
+        <Skeleton className="h-8 w-16" />
+      ) : (
+        <div className="text-2xl font-bold">{value.toLocaleString()}</div>
+      )}
+    </CardContent>
+  </Card>
+));
+
+StatCard.displayName = 'StatCard';
+
+// Memoized user row component
+const UserRow = memo(({ 
+  user, 
+  onEdit, 
+  onBan, 
+  onUnban 
+}: { 
+  user: User; 
+  onEdit: (user: User) => void;
+  onBan: (user: User) => void;
+  onUnban: (user: User) => void;
+}) => (
+  <TableRow>
+    <TableCell>
+      <div>
+        <p className="font-medium">
+          {user.first_name} {user.last_name}
+        </p>
+        <p className="text-xs text-muted-foreground">{user.user_id}</p>
+      </div>
+    </TableCell>
+    <TableCell>
+      <div>
+        <p className="text-sm">{user.email}</p>
+        <p className="text-xs text-muted-foreground">{user.phone}</p>
+      </div>
+    </TableCell>
+    <TableCell>
+      {user.rpc_code ? (
+        <Badge variant="default" className="font-mono">
+          {user.rpc_code}
+        </Badge>
+      ) : (
+        <Badge variant="outline">None</Badge>
+      )}
+    </TableCell>
+    <TableCell>
+      <span className="font-medium">
+        ₦{(user.balance || 0).toLocaleString()}
+      </span>
+    </TableCell>
+    <TableCell>
+      <Badge
+        variant={
+          user.status === 'Active' 
+            ? 'default' 
+            : user.status === 'Banned' 
+              ? 'destructive' 
+              : 'secondary'
+        }
+      >
+        {user.status || 'Active'}
+      </Badge>
+    </TableCell>
+    <TableCell className="text-right">
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onEdit(user)}
+        >
+          <Edit className="h-4 w-4 mr-1" />
+          Edit
+        </Button>
+        {user.status === 'Banned' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-green-600 border-green-600 hover:bg-green-50"
+            onClick={() => onUnban(user)}
+          >
+            <ShieldCheck className="h-4 w-4 mr-1" />
+            Unban
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive border-destructive hover:bg-destructive/10"
+            onClick={() => onBan(user)}
+          >
+            <Ban className="h-4 w-4 mr-1" />
+            Ban
+          </Button>
+        )}
+      </div>
+    </TableCell>
+  </TableRow>
+));
+
+UserRow.displayName = 'UserRow';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -72,7 +177,6 @@ export default function AdminUsers() {
   const [banning, setBanning] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [counts, setCounts] = useState<UserCounts>({ total: 0, rpcPurchased: 0, active: 0 });
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -90,8 +194,12 @@ export default function AdminUsers() {
   const [isSearching, setIsSearching] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
+  // Use React Query for counts
+  const { data: counts = { total: 0, rpcPurchased: 0, active: 0 }, isLoading: countsLoading } = useUserCounts();
+  const { invalidateUsers } = useInvalidateAdminData();
+
   useEffect(() => {
-    fetchInitialData();
+    fetchUsers(0, true);
   }, []);
 
   // Debounce search term
@@ -110,35 +218,6 @@ export default function AdminUsers() {
       fetchUsers(0, true);
     }
   }, [debouncedSearchTerm]);
-
-  const fetchInitialData = async () => {
-    await Promise.all([fetchUsers(0, true), fetchCounts()]);
-  };
-
-  const fetchCounts = async () => {
-    // Get total count
-    const { count: totalCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true });
-
-    // Get RPC purchased count
-    const { count: rpcCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('rpc_purchased', true);
-
-    // Get active users count
-    const { count: activeCount } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .or('status.eq.Active,status.is.null');
-
-    setCounts({
-      total: totalCount || 0,
-      rpcPurchased: rpcCount || 0,
-      active: activeCount || 0,
-    });
-  };
 
   const searchUsers = async (term: string) => {
     setIsSearching(true);
@@ -362,7 +441,7 @@ export default function AdminUsers() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -382,30 +461,9 @@ export default function AdminUsers() {
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{counts.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">RPC Purchased</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{counts.rpcPurchased}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{counts.active}</div>
-          </CardContent>
-        </Card>
+        <StatCard title="Total Users" value={counts.total} isLoading={countsLoading} />
+        <StatCard title="RPC Purchased" value={counts.rpcPurchased} isLoading={countsLoading} />
+        <StatCard title="Active Users" value={counts.active} isLoading={countsLoading} />
       </div>
 
       {/* Search */}
