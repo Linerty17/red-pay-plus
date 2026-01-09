@@ -1,10 +1,23 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+// Domain restriction - ONLY allow requests from official domains
+const ALLOWED_ORIGINS = [
+  'https://www.redpay.com.co',
+  'https://redpay.com.co',
+  'http://localhost:8080',
+  'http://localhost:5173',
+];
+
+const getCorsHeaders = (origin: string | null) => {
+  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
+    origin.startsWith(allowed) || origin.includes('lovable.dev') || origin.includes('lovableproject.com')
+  );
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'https://www.redpay.com.co',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+};
 
 interface PurchaseRequest {
   phone_number: string
@@ -14,9 +27,21 @@ interface PurchaseRequest {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
+  }
+
+  // Domain restriction check
+  if (origin && !ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed) || origin.includes('lovable.dev') || origin.includes('lovableproject.com'))) {
+    console.error('Blocked request from unauthorized origin:', origin);
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unauthorized origin' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import OfficialBanner from "./components/OfficialBanner";
 import BannedOverlay from "./components/BannedOverlay";
+import DomainGuard from "./components/DomainGuard";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 import Auth from "./pages/Auth";
 import Welcome from "./pages/Welcome";
@@ -42,14 +43,15 @@ const queryClient = new QueryClient();
 const App = () => {
   useReferralCapture();
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <OfficialBanner />
-          <BannedOverlay />
-          <BrowserRouter>
+    <DomainGuard>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <OfficialBanner />
+            <BannedOverlay />
+            <BrowserRouter>
             <Routes>
               <Route path="/" element={<Auth />} />
               <Route path="/welcome" element={<Welcome />} />
@@ -87,10 +89,11 @@ const App = () => {
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </DomainGuard>
   );
 };
 
