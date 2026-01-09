@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, memo, useMemo } from 'react';
+import { useEffect, useState, useCallback, memo, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,10 +32,9 @@ import {
 import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useUserCounts, useInvalidateAdminData } from '@/hooks/useAdminData';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 interface User {
   id: string;
@@ -177,6 +177,7 @@ export default function AdminUsers() {
   const [banning, setBanning] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -193,6 +194,8 @@ export default function AdminUsers() {
 
   const [isSearching, setIsSearching] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Use React Query for counts
   const { data: counts = { total: 0, rpcPurchased: 0, active: 0 }, isLoading: countsLoading } = useUserCounts();
@@ -244,6 +247,7 @@ export default function AdminUsers() {
   const fetchUsers = async (pageNum: number, reset: boolean = false) => {
     try {
       if (reset) setLoading(true);
+      else setIsLoadingMore(true);
       
       const { data, error } = await supabase
         .from('users')
@@ -262,16 +266,31 @@ export default function AdminUsers() {
       toast.error('Failed to fetch users');
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
-  const loadMore = useCallback(async () => {
-    if (!debouncedSearchTerm) {
-      await fetchUsers(page + 1);
+  const loadMore = useCallback(() => {
+    if (!debouncedSearchTerm && !isLoadingMore && hasMore) {
+      fetchUsers(page + 1);
     }
-  }, [page, debouncedSearchTerm]);
+  }, [page, debouncedSearchTerm, isLoadingMore, hasMore]);
 
-  const { loadMoreRef, isLoading: isLoadingMore } = useInfiniteScroll(loadMore, hasMore && !debouncedSearchTerm);
+  // Virtual scrolling setup
+  const virtualizer = useVirtualizer({
+    count: users.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 10,
+  });
+
+  const handleScroll = useCallback(() => {
+    if (!parentRef.current || isLoadingMore || !hasMore || debouncedSearchTerm) return;
+    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      loadMore();
+    }
+  }, [loadMore, isLoadingMore, hasMore, debouncedSearchTerm]);
 
   const openEditDialog = (user: User) => {
     setSelectedUser(user);
@@ -484,124 +503,149 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
+      {/* Users Table with Virtual Scrolling */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>RPC Code</TableHead>
-                <TableHead>Balance</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">
-                        {user.first_name} {user.last_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{user.user_id}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm">{user.email}</p>
-                      <p className="text-xs text-muted-foreground">{user.phone}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {user.rpc_code ? (
-                      <Badge variant="default" className="font-mono">
-                        {user.rpc_code}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">None</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      ₦{(user.balance || 0).toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        user.status === 'Active' 
-                          ? 'default' 
-                          : user.status === 'Banned' 
-                            ? 'destructive' 
-                            : 'secondary'
-                      }
-                    >
-                      {user.status || 'Active'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(user)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      {user.status === 'Banned' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-green-500 text-green-500 hover:bg-green-500/10"
-                          onClick={() => openBanDialog(user, 'unban')}
-                        >
-                          <ShieldCheck className="h-4 w-4 mr-1" />
-                          Unban
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => openBanDialog(user, 'ban')}
-                        >
-                          <Ban className="h-4 w-4 mr-1" />
-                          Ban
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {users.length === 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      {searchTerm ? `No users found for "${searchTerm}"` : 'No users found'}
-                    </p>
-                  </TableCell>
+                  <TableHead className="w-[200px]">User</TableHead>
+                  <TableHead className="w-[200px]">Contact</TableHead>
+                  <TableHead className="w-[120px]">RPC Code</TableHead>
+                  <TableHead className="w-[120px]">Balance</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="w-[180px] text-right">Actions</TableHead>
                 </TableRow>
+              </TableHeader>
+            </Table>
+            
+            <div
+              ref={parentRef}
+              onScroll={handleScroll}
+              className="overflow-auto"
+              style={{ height: '600px' }}
+            >
+              {users.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                  {searchTerm ? `No users found for "${searchTerm}"` : 'No users found'}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
+                >
+                  <Table>
+                    <TableBody>
+                      {virtualizer.getVirtualItems().map((virtualRow) => {
+                        const user = users[virtualRow.index];
+                        return (
+                          <TableRow
+                            key={user.id}
+                            data-index={virtualRow.index}
+                            ref={virtualizer.measureElement}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              transform: `translateY(${virtualRow.start}px)`,
+                              display: 'table-row',
+                            }}
+                          >
+                            <TableCell className="w-[200px]">
+                              <div>
+                                <p className="font-medium">
+                                  {user.first_name} {user.last_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{user.user_id}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="w-[200px]">
+                              <div>
+                                <p className="text-sm">{user.email}</p>
+                                <p className="text-xs text-muted-foreground">{user.phone}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="w-[120px]">
+                              {user.rpc_code ? (
+                                <Badge variant="default" className="font-mono">
+                                  {user.rpc_code}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">None</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="w-[120px]">
+                              <span className="font-medium">
+                                ₦{(user.balance || 0).toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell className="w-[100px]">
+                              <Badge
+                                variant={
+                                  user.status === 'Active' 
+                                    ? 'default' 
+                                    : user.status === 'Banned' 
+                                      ? 'destructive' 
+                                      : 'secondary'
+                                }
+                              >
+                                {user.status || 'Active'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="w-[180px] text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(user)}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit
+                                </Button>
+                                {user.status === 'Banned' ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-green-500 text-green-500 hover:bg-green-500/10"
+                                    onClick={() => openBanDialog(user, 'unban')}
+                                  >
+                                    <ShieldCheck className="h-4 w-4 mr-1" />
+                                    Unban
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => openBanDialog(user, 'ban')}
+                                  >
+                                    <Ban className="h-4 w-4 mr-1" />
+                                    Ban
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-            </TableBody>
-          </Table>
+              
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      {/* Infinite scroll loader */}
-      <div ref={loadMoreRef} className="py-4 flex justify-center">
-        {isLoadingMore && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading more...</span>
-          </div>
-        )}
-        {!hasMore && users.length > 0 && !searchTerm && (
-          <p className="text-sm text-muted-foreground">All users loaded</p>
-        )}
-      </div>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

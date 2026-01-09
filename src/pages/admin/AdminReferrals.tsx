@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Search, Download } from 'lucide-react';
+import { Search, Download, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const PAGE_SIZE = 50;
 
 interface Referral {
   id: string;
@@ -24,68 +27,105 @@ interface Referral {
 
 export default function AdminReferrals() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [filteredReferrals, setFilteredReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
   const [actionType, setActionType] = useState<'credit' | 'revoke' | null>(null);
   const [notes, setNotes] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search
   useEffect(() => {
-    fetchReferrals();
-  }, []);
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
+  // Reset on filter change
   useEffect(() => {
-    filterReferrals();
-  }, [searchTerm, statusFilter, referrals]);
+    setReferrals([]);
+    setPage(0);
+    setHasMore(true);
+    fetchReferrals(0, true);
+  }, [statusFilter]);
 
-  const fetchReferrals = async () => {
+  const fetchReferrals = async (pageNum: number, reset = false) => {
     try {
-      const { data, error } = await supabase
+      if (reset) setLoading(true);
+      else setIsLoadingMore(true);
+
+      let query = supabase
         .from('referrals')
         .select(`
           *,
           referrer:users!referrals_referrer_id_fkey(email),
           new_user:users!referrals_new_user_id_fkey(email)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const formatted = data.map((ref: any) => ({
+      const formatted = (data || []).map((ref: any) => ({
         ...ref,
         referrer_email: ref.referrer?.email,
         new_user_email: ref.new_user?.email,
       }));
 
-      setReferrals(formatted);
+      setReferrals(prev => reset ? formatted : [...prev, ...formatted]);
+      setHasMore(formatted.length === PAGE_SIZE);
+      setPage(pageNum);
     } catch (error: any) {
       toast.error('Failed to load referrals');
       console.error(error);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
-  const filterReferrals = () => {
-    let filtered = referrals;
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(r => r.status === statusFilter);
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      fetchReferrals(page + 1);
     }
+  }, [page, isLoadingMore, hasMore]);
 
-    if (searchTerm) {
-      filtered = filtered.filter(r =>
-        r.referrer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.new_user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.referrer_id.includes(searchTerm) ||
-        r.new_user_id.includes(searchTerm)
-      );
+  // Client-side search filter
+  const filteredReferrals = useMemo(() => {
+    if (!debouncedSearch) return referrals;
+    return referrals.filter(r =>
+      r.referrer_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      r.new_user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      r.referrer_id.includes(debouncedSearch) ||
+      r.new_user_id.includes(debouncedSearch)
+    );
+  }, [referrals, debouncedSearch]);
+
+  const virtualizer = useVirtualizer({
+    count: filteredReferrals.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 56,
+    overscan: 10,
+  });
+
+  const handleScroll = useCallback(() => {
+    if (!parentRef.current || isLoadingMore || !hasMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      loadMore();
     }
-
-    setFilteredReferrals(filtered);
-  };
+  }, [loadMore, isLoadingMore, hasMore]);
 
   const handleManualAction = async () => {
     if (!selectedReferral) return;
@@ -113,7 +153,7 @@ export default function AdminReferrals() {
       setSelectedReferral(null);
       setActionType(null);
       setNotes('');
-      fetchReferrals();
+      fetchReferrals(0, true);
     } catch (error: any) {
       toast.error(error.message || 'Action failed');
     }
@@ -143,16 +183,20 @@ export default function AdminReferrals() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
+
+  const items = virtualizer.getVirtualItems();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Referral Management</h1>
-        <p className="text-muted-foreground">View and manage all referrals</p>
+        <p className="text-muted-foreground">
+          View and manage all referrals ({filteredReferrals.length.toLocaleString()} loaded)
+        </p>
       </div>
 
       <div className="flex gap-4">
@@ -183,47 +227,92 @@ export default function AdminReferrals() {
         </Button>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead>Referrer</TableHead>
-              <TableHead>New User</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="w-[200px]">Referrer</TableHead>
+              <TableHead className="w-[200px]">New User</TableHead>
+              <TableHead className="w-[100px]">Status</TableHead>
+              <TableHead className="w-[100px]">Amount</TableHead>
+              <TableHead className="w-[120px]">Date</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {filteredReferrals.map((referral) => (
-              <TableRow key={referral.id}>
-                <TableCell>{referral.referrer_email}</TableCell>
-                <TableCell>{referral.new_user_email}</TableCell>
-                <TableCell>
-                  <Badge variant={referral.status === 'confirmed' ? 'default' : 'secondary'}>
-                    {referral.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>₦{referral.amount_given?.toLocaleString() || 0}</TableCell>
-                <TableCell>{new Date(referral.created_at).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  {referral.status === 'pending' && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedReferral(referral);
-                        setActionType('credit');
-                      }}
-                    >
-                      Manual Credit
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
         </Table>
+
+        <div
+          ref={parentRef}
+          onScroll={handleScroll}
+          className="overflow-auto"
+          style={{ height: '600px' }}
+        >
+          {filteredReferrals.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-muted-foreground">
+              No referrals found
+            </div>
+          ) : (
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              <Table>
+                <TableBody>
+                  {items.map((virtualRow) => {
+                    const referral = filteredReferrals[virtualRow.index];
+                    return (
+                      <TableRow
+                        key={referral.id}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
+                          display: 'table-row',
+                        }}
+                      >
+                        <TableCell className="w-[200px]">{referral.referrer_email}</TableCell>
+                        <TableCell className="w-[200px]">{referral.new_user_email}</TableCell>
+                        <TableCell className="w-[100px]">
+                          <Badge variant={referral.status === 'confirmed' ? 'default' : 'secondary'}>
+                            {referral.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="w-[100px]">₦{referral.amount_given?.toLocaleString() || 0}</TableCell>
+                        <TableCell className="w-[120px]">{new Date(referral.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="w-[120px]">
+                          {referral.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReferral(referral);
+                                setActionType('credit');
+                              }}
+                            >
+                              Manual Credit
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog open={!!selectedReferral} onOpenChange={() => setSelectedReferral(null)}>

@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Search, Download } from 'lucide-react';
+import { Search, Download, Loader2 } from 'lucide-react';
+
+const PAGE_SIZE = 50;
 
 interface Transaction {
   id: string;
@@ -22,59 +25,95 @@ interface Transaction {
 
 export default function AdminTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  const parentRef = useRef<HTMLDivElement>(null);
 
+  // Debounce search
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
+  // Reset on search change
   useEffect(() => {
-    filterTransactions();
-  }, [searchTerm, transactions]);
+    setTransactions([]);
+    setPage(0);
+    setHasMore(true);
+    fetchTransactions(0, true);
+  }, [debouncedSearch]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (pageNum: number, reset = false) => {
     try {
-      const { data, error } = await supabase
+      if (reset) setLoading(true);
+      else setIsLoadingMore(true);
+
+      let query = supabase
         .from('transactions')
-        .select(`
-          *,
-          user:users!transactions_user_id_fkey(email)
-        `)
+        .select(`*, user:users!transactions_user_id_fkey(email)`)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+      if (debouncedSearch) {
+        query = query.or(`transaction_id.ilike.%${debouncedSearch}%,title.ilike.%${debouncedSearch}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const formatted = data.map((txn: any) => ({
+      const formatted = (data || []).map((txn: any) => ({
         ...txn,
         user_email: txn.user?.email,
       }));
 
-      setTransactions(formatted);
+      setTransactions(prev => reset ? formatted : [...prev, ...formatted]);
+      setHasMore(formatted.length === PAGE_SIZE);
+      setPage(pageNum);
     } catch (error: any) {
       toast.error('Failed to load transactions');
       console.error(error);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
-  const filterTransactions = () => {
-    if (!searchTerm) {
-      setFilteredTransactions(transactions);
-      return;
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      fetchTransactions(page + 1);
     }
+  }, [page, isLoadingMore, hasMore]);
 
-    const filtered = transactions.filter(txn =>
-      txn.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      txn.transaction_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      txn.title.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter for search (client-side for already loaded data)
+  const filteredTransactions = useMemo(() => {
+    if (!debouncedSearch) return transactions;
+    return transactions.filter(txn =>
+      txn.user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      txn.transaction_id.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      txn.title.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
+  }, [transactions, debouncedSearch]);
 
-    setFilteredTransactions(filtered);
-  };
+  const virtualizer = useVirtualizer({
+    count: filteredTransactions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 56,
+    overscan: 10,
+  });
+
+  const handleScroll = useCallback(() => {
+    if (!parentRef.current || isLoadingMore || !hasMore) return;
+    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+      loadMore();
+    }
+  }, [loadMore, isLoadingMore, hasMore]);
 
   const exportToCSV = () => {
     const csv = [
@@ -99,13 +138,23 @@ export default function AdminTransactions() {
     a.click();
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const items = virtualizer.getVirtualItems();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Transaction History</h1>
-        <p className="text-muted-foreground">View all platform transactions</p>
+        <p className="text-muted-foreground">
+          View all platform transactions ({filteredTransactions.length.toLocaleString()} loaded)
+        </p>
       </div>
 
       <div className="flex gap-4">
@@ -124,41 +173,86 @@ export default function AdminTransactions() {
         </Button>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Balance Before</TableHead>
-              <TableHead>Balance After</TableHead>
-              <TableHead>Transaction ID</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead className="w-[180px]">User</TableHead>
+              <TableHead className="w-[200px]">Title</TableHead>
+              <TableHead className="w-[80px]">Type</TableHead>
+              <TableHead className="w-[120px]">Amount</TableHead>
+              <TableHead className="w-[120px]">Before</TableHead>
+              <TableHead className="w-[120px]">After</TableHead>
+              <TableHead className="w-[180px]">Transaction ID</TableHead>
+              <TableHead className="w-[160px]">Date</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {filteredTransactions.map((txn) => (
-              <TableRow key={txn.id}>
-                <TableCell>{txn.user_email}</TableCell>
-                <TableCell>{txn.title}</TableCell>
-                <TableCell>
-                  <Badge variant={txn.type === 'credit' ? 'default' : 'secondary'}>
-                    {txn.type}
-                  </Badge>
-                </TableCell>
-                <TableCell className={txn.type === 'credit' ? 'text-green-600' : 'text-red-600'}>
-                  {txn.type === 'credit' ? '+' : '-'}₦{txn.amount.toLocaleString()}
-                </TableCell>
-                <TableCell>₦{txn.balance_before.toLocaleString()}</TableCell>
-                <TableCell>₦{txn.balance_after.toLocaleString()}</TableCell>
-                <TableCell className="font-mono text-xs">{txn.transaction_id}</TableCell>
-                <TableCell>{new Date(txn.created_at).toLocaleString()}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
         </Table>
+        
+        <div
+          ref={parentRef}
+          onScroll={handleScroll}
+          className="overflow-auto"
+          style={{ height: '600px' }}
+        >
+          {filteredTransactions.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-muted-foreground">
+              No transactions found
+            </div>
+          ) : (
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              <Table>
+                <TableBody>
+                  {items.map((virtualRow) => {
+                    const txn = filteredTransactions[virtualRow.index];
+                    return (
+                      <TableRow
+                        key={txn.id}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualRow.start}px)`,
+                          display: 'table-row',
+                        }}
+                      >
+                        <TableCell className="w-[180px]">{txn.user_email}</TableCell>
+                        <TableCell className="w-[200px]">{txn.title}</TableCell>
+                        <TableCell className="w-[80px]">
+                          <Badge variant={txn.type === 'credit' ? 'default' : 'secondary'}>
+                            {txn.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={`w-[120px] ${txn.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                          {txn.type === 'credit' ? '+' : '-'}₦{txn.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="w-[120px]">₦{txn.balance_before.toLocaleString()}</TableCell>
+                        <TableCell className="w-[120px]">₦{txn.balance_after.toLocaleString()}</TableCell>
+                        <TableCell className="w-[180px] font-mono text-xs">{txn.transaction_id}</TableCell>
+                        <TableCell className="w-[160px]">{new Date(txn.created_at).toLocaleString()}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
