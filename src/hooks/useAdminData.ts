@@ -41,17 +41,21 @@ export function usePaymentCounts() {
   return useQuery({
     queryKey: ['admin', 'paymentCounts'],
     queryFn: async () => {
-      const [totalRes, pendingRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
+      const [totalRes, pendingRes, pendingNullRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }),
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).is('status', null),
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
       ]);
       
+      // Pending includes both status='pending' AND status=null
+      const pendingCount = (pendingRes.count || 0) + (pendingNullRes.count || 0);
+      
       return { 
         total: totalRes.count || 0, 
-        pending: pendingRes.count || 0, 
+        pending: pendingCount, 
         approved: approvedRes.count || 0, 
         rejected: rejectedRes.count || 0, 
         cancelled: cancelledRes.count || 0 
