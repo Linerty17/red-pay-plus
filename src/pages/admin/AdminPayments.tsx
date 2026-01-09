@@ -403,12 +403,13 @@ export default function AdminPayments() {
   };
 
   // Filter out banned users from pending payments - they should appear in banned users page only
-  const pendingPayments = payments.filter(p => 
-    (p.status === 'pending' || (!p.verified && !p.status)) && p.user_status !== 'Banned'
+  const pendingPayments = useMemo(() => 
+    payments.filter(p => p.status === 'pending' && p.user_status !== 'Banned'),
+    [payments]
   );
-  const approvedPayments = payments.filter(p => p.status === 'approved');
-  const rejectedPayments = payments.filter(p => p.status === 'rejected');
-  const cancelledPayments = payments.filter(p => p.status === 'cancelled');
+  const approvedPayments = useMemo(() => payments.filter(p => p.status === 'approved'), [payments]);
+  const rejectedPayments = useMemo(() => payments.filter(p => p.status === 'rejected'), [payments]);
+  const cancelledPayments = useMemo(() => payments.filter(p => p.status === 'cancelled'), [payments]);
 
   // Filtered payments based on search and status filter
   const filteredPayments = useMemo(() => {
@@ -419,7 +420,7 @@ export default function AdminPayments() {
         payment.phone.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || 
-        (statusFilter === 'pending' && (payment.status === 'pending' || (!payment.verified && !payment.status))) ||
+        (statusFilter === 'pending' && payment.status === 'pending') ||
         (statusFilter === 'approved' && payment.status === 'approved') ||
         (statusFilter === 'rejected' && payment.status === 'rejected') ||
         (statusFilter === 'cancelled' && payment.status === 'cancelled');
