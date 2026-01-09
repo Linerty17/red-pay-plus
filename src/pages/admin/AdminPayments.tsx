@@ -402,10 +402,10 @@ export default function AdminPayments() {
     }
   };
 
-  // Filter out banned users from pending payments - they should appear in banned users page only
+  // Show ALL pending payments including banned users (with visual indicator)
   // Include both status='pending' AND status=null as pending
   const pendingPayments = useMemo(() => 
-    payments.filter(p => (p.status === 'pending' || !p.status) && p.user_status !== 'Banned'),
+    payments.filter(p => (p.status === 'pending' || !p.status)),
     [payments]
   );
   const approvedPayments = useMemo(() => payments.filter(p => p.status === 'approved'), [payments]);
@@ -463,8 +463,14 @@ export default function AdminPayments() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingPayments.map((payment) => (
-              <Card key={payment.id} className="border-amber-500/30">
+              <Card key={payment.id} className={`${payment.user_status === 'Banned' ? 'border-destructive/50 bg-destructive/5' : 'border-amber-500/30'}`}>
                 <CardContent className="p-4 space-y-4">
+                  {payment.user_status === 'Banned' && (
+                    <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+                      <Ban className="w-4 h-4" />
+                      User is Banned
+                    </div>
+                  )}
                   {payment.proof_image ? (
                     <div 
                       className="relative h-40 bg-muted rounded-lg overflow-hidden cursor-pointer group"
@@ -484,7 +490,12 @@ export default function AdminPayments() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{payment.user_name}</span>
-                      <Badge variant="secondary" className="bg-amber-500/20 text-amber-500">Pending</Badge>
+                      <div className="flex gap-1">
+                        {payment.user_status === 'Banned' && (
+                          <Badge variant="destructive">Banned</Badge>
+                        )}
+                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-500">Pending</Badge>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{payment.email}</p>
                     <p className="text-sm text-muted-foreground">{payment.phone}</p>
