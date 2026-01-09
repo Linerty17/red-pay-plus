@@ -35,11 +35,12 @@ export function AdminSidebar() {
   const currentPath = location.pathname;
   const [pendingCount, setPendingCount] = useState(0);
   const [bannedCount, setBannedCount] = useState(0);
+  const [bannedPendingCount, setBannedPendingCount] = useState(0);
 
   useEffect(() => {
     fetchPendingCount();
     fetchBannedCount();
-    
+    fetchBannedPendingCount();
     // Subscribe to real-time updates for payments
     const paymentsChannel = supabase
       .channel('admin-pending-payments')
@@ -68,6 +69,7 @@ export function AdminSidebar() {
         },
         () => {
           fetchBannedCount();
+          fetchBannedPendingCount();
         }
       )
       .subscribe();
@@ -79,12 +81,33 @@ export function AdminSidebar() {
   }, []);
 
   const fetchPendingCount = async () => {
-    const { count } = await supabase
+    // Get banned user IDs first
+    const { data: bannedUsers } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('status', 'Banned');
+    
+    const bannedUserIds = bannedUsers?.map(u => u.user_id) || [];
+    
+    // Count pending payments excluding banned users
+    let query = supabase
       .from('rpc_purchases')
       .select('*', { count: 'exact', head: true })
-      .or('status.eq.pending,and(verified.eq.false,status.is.null)');
+      .or('status.eq.pending,status.is.null');
     
-    setPendingCount(count || 0);
+    if (bannedUserIds.length > 0) {
+      // This is a workaround - we'll fetch and filter
+      const { data } = await supabase
+        .from('rpc_purchases')
+        .select('user_id')
+        .or('status.eq.pending,status.is.null');
+      
+      const nonBannedCount = (data || []).filter(p => !bannedUserIds.includes(p.user_id)).length;
+      setPendingCount(nonBannedCount);
+    } else {
+      const { count } = await query;
+      setPendingCount(count || 0);
+    }
   };
 
   const fetchBannedCount = async () => {
@@ -96,12 +119,37 @@ export function AdminSidebar() {
     setBannedCount(count || 0);
   };
 
+  const fetchBannedPendingCount = async () => {
+    // Get banned user IDs
+    const { data: bannedUsers } = await supabase
+      .from('users')
+      .select('user_id')
+      .eq('status', 'Banned');
+    
+    if (!bannedUsers || bannedUsers.length === 0) {
+      setBannedPendingCount(0);
+      return;
+    }
+    
+    const bannedUserIds = bannedUsers.map(u => u.user_id);
+    
+    // Count pending payments from banned users
+    const { count } = await supabase
+      .from('rpc_purchases')
+      .select('*', { count: 'exact', head: true })
+      .in('user_id', bannedUserIds)
+      .or('status.eq.pending,status.is.null');
+    
+    setBannedPendingCount(count || 0);
+  };
+
   const isActive = (path: string) => currentPath === path;
 
   const menuItems = [
     { title: 'Dashboard', url: '/ifechukwu/dashboard', icon: LayoutDashboard },
     { title: 'Users', url: '/ifechukwu/users', icon: Users },
     { title: 'Banned Users', url: '/ifechukwu/banned-users', icon: ShieldX, badge: bannedCount, badgeVariant: 'destructive' },
+    { title: 'Banned Pending', url: '/ifechukwu/banned-pending', icon: ShieldX, badge: bannedPendingCount, badgeVariant: 'destructive' },
     { title: 'Referrals', url: '/ifechukwu/referrals', icon: Users },
     { title: 'Payments', url: '/ifechukwu/payments', icon: CreditCard, highlight: true, badge: pendingCount },
     { title: 'Transactions', url: '/ifechukwu/transactions', icon: Receipt },
