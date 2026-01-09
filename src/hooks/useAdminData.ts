@@ -20,7 +20,7 @@ export function useAdminStats() {
       const [usersRes, referralsRes, paymentsRes, transactionsRes] = await Promise.all([
         supabase.from('users').select('id', { count: 'exact', head: true }),
         supabase.from('referrals').select('id', { count: 'exact', head: true }),
-        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('verified', false),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('transactions').select('id', { count: 'exact', head: true }),
       ]);
 
@@ -36,23 +36,26 @@ export function useAdminStats() {
   });
 }
 
-// Payment counts
+// Payment counts - optimized with parallel count queries instead of fetching all rows
 export function usePaymentCounts() {
   return useQuery({
     queryKey: ['admin', 'paymentCounts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('rpc_purchases')
-        .select('status');
+      const [totalRes, pendingRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
+      ]);
       
-      if (error) throw error;
-      
-      const pending = data.filter(p => p.status === 'pending' || !p.status).length;
-      const approved = data.filter(p => p.status === 'approved').length;
-      const rejected = data.filter(p => p.status === 'rejected').length;
-      const cancelled = data.filter(p => p.status === 'cancelled').length;
-      
-      return { total: data.length, pending, approved, rejected, cancelled };
+      return { 
+        total: totalRes.count || 0, 
+        pending: pendingRes.count || 0, 
+        approved: approvedRes.count || 0, 
+        rejected: rejectedRes.count || 0, 
+        cancelled: cancelledRes.count || 0 
+      };
     },
     staleTime: STALE_TIME.payments,
     refetchOnWindowFocus: false,
@@ -112,7 +115,7 @@ export function usePrefetchAdminData() {
           const [usersRes, referralsRes, paymentsRes, transactionsRes] = await Promise.all([
             supabase.from('users').select('id', { count: 'exact', head: true }),
             supabase.from('referrals').select('id', { count: 'exact', head: true }),
-            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('verified', false),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
             supabase.from('transactions').select('id', { count: 'exact', head: true }),
           ]);
           return {
@@ -143,14 +146,19 @@ export function usePrefetchAdminData() {
       queryClient.prefetchQuery({
         queryKey: ['admin', 'paymentCounts'],
         queryFn: async () => {
-          const { data } = await supabase.from('rpc_purchases').select('status');
-          if (!data) return { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
-          return {
-            total: data.length,
-            pending: data.filter(p => p.status === 'pending' || !p.status).length,
-            approved: data.filter(p => p.status === 'approved').length,
-            rejected: data.filter(p => p.status === 'rejected').length,
-            cancelled: data.filter(p => p.status === 'cancelled').length,
+          const [totalRes, pendingRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
+          ]);
+          return { 
+            total: totalRes.count || 0, 
+            pending: pendingRes.count || 0, 
+            approved: approvedRes.count || 0, 
+            rejected: rejectedRes.count || 0, 
+            cancelled: cancelledRes.count || 0 
           };
         },
         staleTime: STALE_TIME.payments,
