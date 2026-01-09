@@ -403,8 +403,9 @@ export default function AdminPayments() {
   };
 
   // Filter out banned users from pending payments - they should appear in banned users page only
+  // Include both status='pending' AND status=null as pending
   const pendingPayments = useMemo(() => 
-    payments.filter(p => p.status === 'pending' && p.user_status !== 'Banned'),
+    payments.filter(p => (p.status === 'pending' || !p.status) && p.user_status !== 'Banned'),
     [payments]
   );
   const approvedPayments = useMemo(() => payments.filter(p => p.status === 'approved'), [payments]);
@@ -420,7 +421,7 @@ export default function AdminPayments() {
         payment.phone.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || 
-        (statusFilter === 'pending' && payment.status === 'pending') ||
+        (statusFilter === 'pending' && (payment.status === 'pending' || !payment.status)) ||
         (statusFilter === 'approved' && payment.status === 'approved') ||
         (statusFilter === 'rejected' && payment.status === 'rejected') ||
         (statusFilter === 'cancelled' && payment.status === 'cancelled');
