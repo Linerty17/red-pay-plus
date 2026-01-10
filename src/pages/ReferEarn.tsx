@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
+import ReferralLeaderboard from "@/components/ReferralLeaderboard";
 import { Copy, Users, Gift, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,6 +101,9 @@ const ReferEarn = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Leaderboard */}
+        <ReferralLeaderboard />
 
         {/* Rewards Info */}
         <Card className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent backdrop-blur-sm border-primary/30 animate-fade-in">
