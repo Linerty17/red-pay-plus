@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Check, X, Eye, Ban, Image, Loader2, Trash2 } from 'lucide-react';
+import { Check, X, Eye, Ban, Image, Loader2, Trash2, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGlobalRpcCode, useInvalidateAdminData } from '@/hooks/useAdminData';
 
@@ -26,10 +26,11 @@ export default function AdminBannedPending() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'reject_all' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'reject_all' | 'unban' | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingAll, setProcessingAll] = useState(false);
+  const [unbanningUserId, setUnbanningUserId] = useState<string | null>(null);
 
   const { data: globalRpcCode = 'RPC2000122' } = useGlobalRpcCode();
   const { invalidatePayments, invalidateStats } = useInvalidateAdminData();
@@ -152,6 +153,43 @@ export default function AdminBannedPending() {
     }
   };
 
+  const handleUnban = async () => {
+    if (!selectedPayment) return;
+
+    setUnbanningUserId(selectedPayment.user_id);
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ status: 'Active', ban_reason: null })
+        .eq('user_id', selectedPayment.user_id);
+
+      if (error) throw error;
+
+      // Log audit
+      const user = await supabase.auth.getUser();
+      await supabase.from('audit_logs').insert({
+        admin_user_id: user.data.user?.id,
+        action_type: 'unban_user',
+        target_user_id: selectedPayment.user_id,
+        details: { user_name: selectedPayment.user_name, from_page: 'banned_pending' },
+      });
+
+      toast.success(`User "${selectedPayment.user_name}" has been unbanned`);
+      
+      // Remove this user's payments from the list since they're no longer banned
+      setPayments(prev => prev.filter(p => p.user_id !== selectedPayment.user_id));
+      invalidatePayments();
+      invalidateStats();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to unban user');
+    } finally {
+      setUnbanningUserId(null);
+      setSelectedPayment(null);
+      setActionType(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -238,31 +276,47 @@ export default function AdminBannedPending() {
                   <p className="text-xs text-muted-foreground">{new Date(payment.created_at).toLocaleString()}</p>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}
+                      disabled={processingId === payment.id || unbanningUserId === payment.user_id}
+                    >
+                      {processingId === payment.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-1" />
+                          Approve
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}
+                      disabled={processingId === payment.id || unbanningUserId === payment.user_id}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
                   <Button 
                     size="sm" 
-                    className="flex-1"
-                    onClick={() => { setSelectedPayment(payment); setActionType('approve'); }}
-                    disabled={processingId === payment.id}
+                    variant="outline"
+                    className="w-full border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+                    onClick={() => { setSelectedPayment(payment); setActionType('unban'); }}
+                    disabled={processingId === payment.id || unbanningUserId === payment.user_id}
                   >
-                    {processingId === payment.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    {unbanningUserId === payment.user_id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
                     ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-1" />
-                        Approve
-                      </>
+                      <UserCheck className="w-4 h-4 mr-1" />
                     )}
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => { setSelectedPayment(payment); setActionType('reject'); }}
-                    disabled={processingId === payment.id}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    Reject
+                    Unban User
                   </Button>
                 </div>
               </CardContent>
@@ -327,6 +381,31 @@ export default function AdminBannedPending() {
             <Button variant="destructive" onClick={handleRejectAll} disabled={processingAll}>
               {processingAll ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Reject All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unban User Confirmation Dialog */}
+      <Dialog open={actionType === 'unban'} onOpenChange={() => { setSelectedPayment(null); setActionType(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unban User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to unban "{selectedPayment?.user_name}"? Their pending payment will be moved back to the main payments page.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSelectedPayment(null); setActionType(null); }}>
+              Cancel
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleUnban}
+              disabled={!!unbanningUserId}
+            >
+              {unbanningUserId ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
+              Unban User
             </Button>
           </DialogFooter>
         </DialogContent>
