@@ -17,17 +17,21 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
-      const [usersRes, referralsRes, paymentsRes, transactionsRes] = await Promise.all([
+      const [usersRes, referralsRes, pendingRes, pendingNullRes, transactionsRes] = await Promise.all([
         supabase.from('users').select('id', { count: 'exact', head: true }),
         supabase.from('referrals').select('id', { count: 'exact', head: true }),
         supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).is('status', null),
         supabase.from('transactions').select('id', { count: 'exact', head: true }),
       ]);
+
+      // Pending includes both status='pending' AND status=null
+      const pendingPayments = (pendingRes.count || 0) + (pendingNullRes.count || 0);
 
       return {
         totalUsers: usersRes.count || 0,
         totalReferrals: referralsRes.count || 0,
-        pendingPayments: paymentsRes.count || 0,
+        pendingPayments,
         totalTransactions: transactionsRes.count || 0,
       };
     },
@@ -116,16 +120,18 @@ export function usePrefetchAdminData() {
       queryClient.prefetchQuery({
         queryKey: ['admin', 'stats'],
         queryFn: async () => {
-          const [usersRes, referralsRes, paymentsRes, transactionsRes] = await Promise.all([
+          const [usersRes, referralsRes, pendingRes, pendingNullRes, transactionsRes] = await Promise.all([
             supabase.from('users').select('id', { count: 'exact', head: true }),
             supabase.from('referrals').select('id', { count: 'exact', head: true }),
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).is('status', null),
             supabase.from('transactions').select('id', { count: 'exact', head: true }),
           ]);
+          const pendingPayments = (pendingRes.count || 0) + (pendingNullRes.count || 0);
           return {
             totalUsers: usersRes.count || 0,
             totalReferrals: referralsRes.count || 0,
-            pendingPayments: paymentsRes.count || 0,
+            pendingPayments,
             totalTransactions: transactionsRes.count || 0,
           };
         },
@@ -150,16 +156,18 @@ export function usePrefetchAdminData() {
       queryClient.prefetchQuery({
         queryKey: ['admin', 'paymentCounts'],
         queryFn: async () => {
-          const [totalRes, pendingRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
+          const [totalRes, pendingRes, pendingNullRes, approvedRes, rejectedRes, cancelledRes] = await Promise.all([
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }),
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+            supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).is('status', null),
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
             supabase.from('rpc_purchases').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
           ]);
+          const pendingCount = (pendingRes.count || 0) + (pendingNullRes.count || 0);
           return { 
             total: totalRes.count || 0, 
-            pending: pendingRes.count || 0, 
+            pending: pendingCount, 
             approved: approvedRes.count || 0, 
             rejected: rejectedRes.count || 0, 
             cancelled: cancelledRes.count || 0 
