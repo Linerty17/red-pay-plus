@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "./hooks/useAuth";
 import OfficialBanner from "./components/OfficialBanner";
 import BannedOverlay from "./components/BannedOverlay";
@@ -44,58 +45,60 @@ const queryClient = new QueryClient();
 const App = () => {
   useReferralCapture();
   return (
-    <DomainGuard>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <OfficialBanner />
-            <BannedOverlay />
-            <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Auth />} />
-              <Route path="/welcome" element={<Welcome />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/broadcast" element={<Broadcast />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/receipt/:id" element={<Receipt />} />
-              <Route path="/buyrpc" element={<BuyRPC />} />
-              <Route path="/buy-rpc" element={<BuyRPC />} />
-              <Route path="/payment-instructions" element={<PaymentInstructions />} />
-              <Route path="/withdraw" element={<Withdraw />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/success" element={<SuccessPage />} />
-              <Route path="/refer-earn" element={<ReferEarn />} />
-              <Route path="/notifications" element={<Notifications />} />
-              
-              {/* Admin Routes - secured path */}
-              <Route path="/ifechukwu/register" element={<AdminRegister />} />
-              <Route path="/ifechukwu/login" element={<AdminLogin />} />
-              <Route path="/ifechukwu" element={<AdminLayout />}>
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="referrals" element={<AdminReferrals />} />
-                <Route path="payments" element={<AdminPayments />} />
-                <Route path="transactions" element={<AdminTransactions />} />
-                <Route path="push" element={<AdminPush />} />
-                <Route path="notifications" element={<AdminNotifications />} />
-                <Route path="audit" element={<AdminAudit />} />
-                <Route path="settings" element={<AdminSettingsProtected />} />
-                <Route path="banned-users" element={<AdminBannedUsers />} />
-                <Route path="banned-pending" element={<AdminBannedPending />} />
-              </Route>
-              
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </DomainGuard>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <DomainGuard>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <OfficialBanner />
+              <BannedOverlay />
+              <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Auth />} />
+                <Route path="/welcome" element={<Welcome />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/broadcast" element={<Broadcast />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/receipt/:id" element={<Receipt />} />
+                <Route path="/buyrpc" element={<BuyRPC />} />
+                <Route path="/buy-rpc" element={<BuyRPC />} />
+                <Route path="/payment-instructions" element={<PaymentInstructions />} />
+                <Route path="/withdraw" element={<Withdraw />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/success" element={<SuccessPage />} />
+                <Route path="/refer-earn" element={<ReferEarn />} />
+                <Route path="/notifications" element={<Notifications />} />
+                
+                {/* Admin Routes - secured path */}
+                <Route path="/ifechukwu/register" element={<AdminRegister />} />
+                <Route path="/ifechukwu/login" element={<AdminLogin />} />
+                <Route path="/ifechukwu" element={<AdminLayout />}>
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="referrals" element={<AdminReferrals />} />
+                  <Route path="payments" element={<AdminPayments />} />
+                  <Route path="transactions" element={<AdminTransactions />} />
+                  <Route path="push" element={<AdminPush />} />
+                  <Route path="notifications" element={<AdminNotifications />} />
+                  <Route path="audit" element={<AdminAudit />} />
+                  <Route path="settings" element={<AdminSettingsProtected />} />
+                  <Route path="banned-users" element={<AdminBannedUsers />} />
+                  <Route path="banned-pending" element={<AdminBannedPending />} />
+                </Route>
+                
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </DomainGuard>
+    </ThemeProvider>
   );
 };
 
