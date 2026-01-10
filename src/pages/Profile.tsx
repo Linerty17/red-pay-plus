@@ -1,16 +1,48 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
-import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, LogOut, Eye, EyeOff, Sparkles } from "lucide-react";
+import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, LogOut, Eye, EyeOff, Sparkles, Pencil } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationSetup } from "@/components/NotificationSetup";
 import { Switch } from "@/components/ui/switch";
+import { z } from "zod";
+
+const countries = [
+  "Nigeria", "Ghana", "Kenya", "South Africa", "Uganda", "Tanzania", 
+  "Egypt", "Morocco", "Ethiopia", "Cameroon", "Côte d'Ivoire", "Senegal",
+  "United States", "United Kingdom", "Canada", "India", "Other"
+];
+
+const profileSchema = z.object({
+  first_name: z.string().trim().min(2, "First name must be at least 2 characters").max(50, "First name must be less than 50 characters"),
+  last_name: z.string().trim().min(2, "Last name must be at least 2 characters").max(50, "Last name must be less than 50 characters"),
+  phone: z.string().trim().min(10, "Phone number must be at least 10 digits").max(20, "Phone number must be less than 20 digits"),
+  country: z.string().min(1, "Please select a country"),
+});
+
+type ProfileFormData = z.infer<typeof profileSchema>;
 
 const Profile = () => {
   const { profile, refreshProfile } = useAuth();
@@ -18,6 +50,15 @@ const Profile = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [hideEmail, setHideEmail] = useState(false);
   const [hidePhone, setHidePhone] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<ProfileFormData>({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    country: "",
+  });
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof ProfileFormData, string>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -31,6 +72,67 @@ const Profile = () => {
       toast.error("Failed to log out");
     } finally {
       setLoggingOut(false);
+    }
+  };
+
+  const openEditModal = () => {
+    if (profile) {
+      setFormData({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: profile.phone,
+        country: profile.country,
+      });
+      setFormErrors({});
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleInputChange = (field: keyof ProfileFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user types
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile?.auth_user_id) return;
+
+    // Validate form
+    const result = profileSchema.safeParse(formData);
+    if (!result.success) {
+      const errors: Partial<Record<keyof ProfileFormData, string>> = {};
+      result.error.errors.forEach(err => {
+        const field = err.path[0] as keyof ProfileFormData;
+        errors[field] = err.message;
+      });
+      setFormErrors(errors);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          first_name: result.data.first_name.trim(),
+          last_name: result.data.last_name.trim(),
+          phone: result.data.phone.trim(),
+          country: result.data.country,
+        })
+        .eq('auth_user_id', profile.auth_user_id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      setIsEditModalOpen(false);
+      toast.success("Profile updated successfully!");
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -176,6 +278,17 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Edit Button */}
+                <Button
+                  onClick={openEditModal}
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 border-primary/30 hover:bg-primary/10"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Profile
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -364,6 +477,113 @@ const Profile = () => {
           </Button>
         </div>
       </main>
+
+      {/* Edit Profile Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />
+              Edit Profile
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* First Name */}
+            <div className="space-y-2">
+              <Label htmlFor="first_name" className="text-foreground">First Name</Label>
+              <Input
+                id="first_name"
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+                placeholder="Enter first name"
+                className={formErrors.first_name ? "border-destructive" : ""}
+              />
+              {formErrors.first_name && (
+                <p className="text-xs text-destructive">{formErrors.first_name}</p>
+              )}
+            </div>
+
+            {/* Last Name */}
+            <div className="space-y-2">
+              <Label htmlFor="last_name" className="text-foreground">Last Name</Label>
+              <Input
+                id="last_name"
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+                placeholder="Enter last name"
+                className={formErrors.last_name ? "border-destructive" : ""}
+              />
+              {formErrors.last_name && (
+                <p className="text-xs text-destructive">{formErrors.last_name}</p>
+              )}
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-foreground">Phone Number</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter phone number"
+                className={formErrors.phone ? "border-destructive" : ""}
+              />
+              {formErrors.phone && (
+                <p className="text-xs text-destructive">{formErrors.phone}</p>
+              )}
+            </div>
+
+            {/* Country */}
+            <div className="space-y-2">
+              <Label htmlFor="country" className="text-foreground">Country</Label>
+              <Select
+                value={formData.country}
+                onValueChange={(value) => handleInputChange('country', value)}
+              >
+                <SelectTrigger className={formErrors.country ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map((country) => (
+                    <SelectItem key={country} value={country}>
+                      {country}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.country && (
+                <p className="text-xs text-destructive">{formErrors.country}</p>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Note: Email cannot be changed. Contact support if you need to update your email.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={isSaving}
+              className="min-w-[100px]"
+            >
+              {isSaving ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
