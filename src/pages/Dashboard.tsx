@@ -48,6 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import ConfettiCelebration from "@/components/ConfettiCelebration";
 
 const TELEGRAM_CHANNEL_URL = "https://t.me/Skypay261";
 
@@ -64,6 +65,7 @@ const Dashboard = () => {
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
   const [showPaymentStatus, setShowPaymentStatus] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Initialize notifications hook
   useNotifications(profile?.user_id);
@@ -231,6 +233,9 @@ const Dashboard = () => {
       setNextClaimAt(next);
       
       await refreshProfile();
+      
+      // Trigger confetti celebration
+      setShowConfetti(true);
       toast.success("₦30,000 claimed successfully!");
     } catch (error: any) {
       console.error('Error claiming bonus:', error);
@@ -350,6 +355,12 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen min-h-[100dvh] w-full relative overflow-x-hidden">
       <LiquidBackground />
+      
+      {/* Confetti Celebration */}
+      <ConfettiCelebration 
+        isActive={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
 
       {/* Payment Status Overlay - Full Screen */}
       {profile?.user_id && showPaymentStatus && (
