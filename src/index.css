@@ -8,59 +8,60 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
+    /* Premium light mode - warm cream with elegant depth */
+    --background: 30 25% 98%;
+    --foreground: 20 15% 15%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 10%;
+    --card: 30 20% 99%;
+    --card-foreground: 20 15% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover: 30 25% 99%;
+    --popover-foreground: 20 15% 15%;
 
-    --primary: 0 94% 44%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary: 30 15% 94%;
+    --secondary-foreground: 20 15% 25%;
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 30 10% 92%;
+    --muted-foreground: 20 10% 40%;
 
-    --accent: 0 94% 44%;
+    --accent: 0 72% 51%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 94%;
-    --ring: 0 94% 44%;
+    --border: 30 15% 88%;
+    --input: 30 15% 95%;
+    --ring: 0 72% 51%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    --success: 142 76% 36%;
+    --success: 142 60% 40%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 0%;
+    --warning-foreground: 20 15% 15%;
 
-    /* RedPay specific tokens */
-    --redpay-red: 0 94% 44%;
-    --redpay-dark: 0 0% 96%;
-    --redpay-black: 0 0% 100%;
-    --redpay-surface: 0 0% 98%;
-    --redpay-text: 0 0% 10%;
-    --redpay-text-muted: 0 0% 45%;
+    /* RedPay specific tokens - Light */
+    --redpay-red: 0 72% 51%;
+    --redpay-dark: 30 15% 94%;
+    --redpay-black: 30 25% 98%;
+    --redpay-surface: 30 20% 97%;
+    --redpay-text: 20 15% 15%;
+    --redpay-text-muted: 20 10% 40%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 94%, 44%), hsl(0, 94%, 35%));
-    --gradient-dark: linear-gradient(180deg, hsl(0, 0%, 98%), hsl(0, 0%, 94%));
-    --gradient-subtle: linear-gradient(135deg, hsl(0, 0%, 98%), hsl(0, 0%, 96%));
+    /* Premium Gradients - Light */
+    --gradient-primary: linear-gradient(135deg, hsl(0, 72%, 51%), hsl(0, 65%, 42%));
+    --gradient-dark: linear-gradient(180deg, hsl(30, 25%, 98%), hsl(30, 20%, 94%));
+    --gradient-subtle: linear-gradient(135deg, hsl(30, 20%, 99%), hsl(30, 15%, 96%));
 
-    /* Shadows */
-    --shadow-glow: 0 0 40px hsl(0 94% 44% / 0.2);
-    --shadow-card: 0 10px 30px -10px hsl(0 0% 0% / 0.1);
-    --shadow-elevated: 0 20px 50px -15px hsl(0 0% 0% / 0.15);
+    /* Elegant Shadows - Light */
+    --shadow-glow: 0 0 60px hsl(0 72% 51% / 0.12);
+    --shadow-card: 0 4px 20px -4px hsl(20 15% 15% / 0.08), 0 1px 3px hsl(20 15% 15% / 0.04);
+    --shadow-elevated: 0 12px 40px -8px hsl(20 15% 15% / 0.12), 0 4px 12px hsl(20 15% 15% / 0.06);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -153,22 +154,41 @@ All colors MUST be HSL.
     position: fixed;
     inset: 0;
     z-index: 0;
-    background: linear-gradient(135deg, #000000 0%, #1a0000 50%, #000000 100%);
     overflow: hidden;
+  }
+
+  /* Dark mode liquid background */
+  .dark .liquid-bg {
+    background: linear-gradient(135deg, #000000 0%, #1a0000 50%, #000000 100%);
+  }
+
+  /* Light mode liquid background - elegant warm gradient */
+  :root .liquid-bg,
+  .liquid-bg {
+    background: linear-gradient(135deg, hsl(30, 25%, 98%) 0%, hsl(30, 20%, 95%) 50%, hsl(30, 25%, 98%) 100%);
   }
 
   .liquid-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.3;
+    filter: blur(80px);
     animation: float 20s ease-in-out infinite;
+  }
+
+  /* Dark mode blobs */
+  .dark .liquid-blob {
+    opacity: 0.3;
+  }
+
+  /* Light mode blobs - softer, more elegant */
+  .liquid-blob {
+    opacity: 0.15;
   }
 
   .liquid-blob-1 {
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, hsl(0, 94%, 44%) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(0, 72%, 51%) 0%, transparent 70%);
     top: 10%;
     left: 10%;
     animation-delay: 0s;
@@ -177,7 +197,7 @@ All colors MUST be HSL.
   .liquid-blob-2 {
     width: 350px;
     height: 350px;
-    background: radial-gradient(circle, hsl(0, 94%, 35%) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(0, 65%, 42%) 0%, transparent 70%);
     bottom: 20%;
     right: 15%;
     animation-delay: 5s;
@@ -186,7 +206,7 @@ All colors MUST be HSL.
   .liquid-blob-3 {
     width: 300px;
     height: 300px;
-    background: radial-gradient(circle, hsl(0, 80%, 30%) 0%, transparent 70%);
+    background: radial-gradient(circle, hsl(0, 55%, 35%) 0%, transparent 70%);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
