@@ -55,7 +55,7 @@ export default function AdminTransactions() {
 
       let query = supabase
         .from('transactions')
-        .select(`*, user:users!transactions_user_id_fkey(email)`)
+        .select('*')
         .order('created_at', { ascending: false })
         .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -67,9 +67,22 @@ export default function AdminTransactions() {
 
       if (error) throw error;
 
+      // Fetch user emails for transactions
+      const userIds = [...new Set((data || []).map(t => t.user_id))];
+      
+      let emailMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('user_id, email')
+          .in('user_id', userIds);
+        
+        emailMap = new Map(usersData?.map(u => [u.user_id, u.email]) || []);
+      }
+
       const formatted = (data || []).map((txn: any) => ({
         ...txn,
-        user_email: txn.user?.email,
+        user_email: emailMap.get(txn.user_id) || 'Unknown',
       }));
 
       setTransactions(prev => reset ? formatted : [...prev, ...formatted]);
