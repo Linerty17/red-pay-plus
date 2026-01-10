@@ -45,7 +45,7 @@ const queryClient = new QueryClient();
 const App = () => {
   useReferralCapture();
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <DomainGuard>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
