@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trophy, Medal, User, Hash } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trophy, Medal, User, Hash, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -31,7 +32,18 @@ const ReferralLeaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [isAnimating, setIsAnimating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return topUsers;
+    const query = searchQuery.toLowerCase();
+    return topUsers.filter(user => 
+      user.first_name.toLowerCase().includes(query) ||
+      user.last_name.toLowerCase().includes(query)
+    );
+  }, [topUsers, searchQuery]);
 
   const getDateFilter = (filter: TimeFilter): Date | null => {
     const now = new Date();
@@ -240,6 +252,26 @@ const ReferralLeaderboard = () => {
           ))}
         </div>
 
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9 h-9 text-sm bg-secondary/20 border-border/50 focus:bg-secondary/30 transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         <div 
           ref={contentRef}
           className={`transition-all duration-300 ease-out ${
@@ -261,35 +293,43 @@ const ReferralLeaderboard = () => {
                 <div className="text-center py-4 text-muted-foreground text-sm animate-fade-in">
                   No referrals {timeFilter !== "all" ? "in this period" : "yet"}
                 </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm animate-fade-in">
+                  No users match "{searchQuery}"
+                </div>
               ) : (
                 <ScrollArea className="h-[300px] pr-2">
                   <div className="space-y-2">
-                    {topUsers.map((user, index) => (
-                      <div
-                        key={user.user_id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${getRankStyle(index + 1)}`}
-                        style={{ 
-                          animationDelay: `${Math.min(index, 10) * 50}ms`,
-                          animation: !isAnimating ? `fade-in 0.3s ease-out ${Math.min(index, 10) * 50}ms both` : 'none'
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50 transition-transform duration-200 hover:scale-110">
-                            {getRankIcon(index + 1)}
+                    {filteredUsers.map((user) => {
+                      // Get original rank from full list
+                      const originalRank = topUsers.findIndex(u => u.user_id === user.user_id) + 1;
+                      return (
+                        <div
+                          key={user.user_id}
+                          className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${getRankStyle(originalRank)}`}
+                          style={{ 
+                            animationDelay: `${Math.min(filteredUsers.indexOf(user), 10) * 50}ms`,
+                            animation: !isAnimating ? `fade-in 0.3s ease-out ${Math.min(filteredUsers.indexOf(user), 10) * 50}ms both` : 'none'
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50 transition-transform duration-200 hover:scale-110">
+                              {getRankIcon(originalRank)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">
+                                {maskName(user.first_name, user.last_name)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Rank #{originalRank}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {maskName(user.first_name, user.last_name)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-primary">{user.referral_count}</p>
+                            <p className="text-xs text-muted-foreground">referrals</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-primary">{user.referral_count}</p>
-                          <p className="text-xs text-muted-foreground">referrals</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               )}
