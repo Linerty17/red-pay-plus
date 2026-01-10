@@ -465,80 +465,80 @@ const Dashboard = () => {
       )}
 
       {/* Main Content */}
-      <main className="relative z-10 px-4 py-4 max-w-lg mx-auto space-y-4 pb-8">
+      <main className="relative z-10 px-3 sm:px-4 py-3 sm:py-4 max-w-md sm:max-w-lg mx-auto space-y-3 sm:space-y-4 pb-6">
         
         {/* Trust Badges Row */}
-        <div className="flex items-center justify-center gap-6 py-2 animate-fade-in">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 py-1 animate-fade-in">
           {trustBadges.map((badge, index) => (
-            <div key={index} className="flex items-center gap-1.5 text-muted-foreground">
-              <badge.icon className={`w-4 h-4 ${badge.color}`} />
-              <span className="text-xs font-medium">{badge.label}</span>
+            <div key={index} className="flex items-center gap-1 text-muted-foreground">
+              <badge.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${badge.color}`} />
+              <span className="text-[10px] sm:text-xs font-medium">{badge.label}</span>
             </div>
           ))}
         </div>
 
         {/* Premium Balance Card */}
-        <Card className="relative overflow-hidden rounded-3xl border-0 shadow-2xl animate-fade-in">
+        <Card className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-0 shadow-xl sm:shadow-2xl animate-fade-in">
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.15)_0%,_transparent_50%)]" />
-          <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-2xl" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-2xl" />
           
-          <CardContent className="relative p-6 space-y-5">
+          <CardContent className="relative p-4 sm:p-5 space-y-3 sm:space-y-4">
             {/* Header Row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-primary-foreground/80">
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                  <Wallet className="w-4 h-4 text-white" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                  <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <span className="text-sm font-medium">Total Balance</span>
+                <span className="text-xs sm:text-sm font-medium">Total Balance</span>
               </div>
               <Button
                 onClick={handleOpenVideo}
                 variant="ghost"
                 size="sm"
-                className="bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-sm"
+                className="h-8 px-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg sm:rounded-xl backdrop-blur-sm text-xs"
               >
-                <Video className="w-4 h-4 mr-1.5" />
+                <Video className="w-3.5 h-3.5 mr-1" />
                 Watch
               </Button>
             </div>
 
             {/* Balance Display */}
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-white tracking-tight">
+                <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                   ₦{profile?.balance?.toLocaleString() || '0'}
                 </span>
-                <div className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full">
-                  <TrendingUp className="w-3 h-3 text-green-300" />
-                  <span className="text-xs text-green-200 font-medium">+₦30k</span>
+                <div className="flex items-center gap-1 bg-white/20 px-1.5 py-0.5 rounded-full">
+                  <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-300" />
+                  <span className="text-[10px] sm:text-xs text-green-200 font-medium">+₦30k</span>
                 </div>
               </div>
-              <p className="text-xs text-primary-foreground/60 font-mono">
+              <p className="text-[10px] sm:text-xs text-primary-foreground/60 font-mono truncate">
                 ID: {profile?.user_id || 'Loading...'}
               </p>
             </div>
 
             {/* Referral Stats */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-3.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center">
+                    <Users className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
                   </div>
                   <div>
-                    <p className="text-xs text-primary-foreground/70">Total Referrals</p>
-                    <p className="text-xl font-bold text-white">{profile?.referral_count || 0}</p>
+                    <p className="text-[10px] sm:text-xs text-primary-foreground/70">Total Referrals</p>
+                    <p className="text-lg sm:text-xl font-bold text-white">{profile?.referral_count || 0}</p>
                   </div>
                 </div>
                 <Link to="/refer-earn">
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="text-white hover:bg-white/10 rounded-xl"
+                    className="h-8 text-xs text-white hover:bg-white/10 rounded-lg sm:rounded-xl px-2"
                   >
-                    Invite <ChevronRight className="w-4 h-4 ml-1" />
+                    Invite <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                   </Button>
                 </Link>
               </div>
@@ -546,21 +546,20 @@ const Dashboard = () => {
 
             {/* Claim Timer Progress */}
             {nextClaimAt && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] sm:text-xs">
                   <span className="text-primary-foreground/70">Next claim available in</span>
                   <span className="text-white font-mono font-bold">{timeLeft}</span>
                 </div>
-                <Progress value={claimProgress} className="h-1.5 bg-white/20" />
+                <Progress value={claimProgress} className="h-1 sm:h-1.5 bg-white/20" />
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <Button
                 onClick={handleClaim}
-                size="lg"
-                className={`flex-1 h-14 rounded-2xl font-bold text-base shadow-lg transition-all ${
+                className={`flex-1 h-11 sm:h-12 rounded-xl sm:rounded-2xl font-bold text-sm shadow-lg transition-all ${
                   nextClaimAt 
                     ? 'bg-white/20 text-white/70 cursor-not-allowed' 
                     : 'bg-white text-primary hover:bg-white/90 hover:scale-[1.02]'
@@ -569,27 +568,26 @@ const Dashboard = () => {
               >
                 {isProcessing ? (
                   <>
-                    <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                    <Sparkles className="w-4 h-4 mr-1.5 animate-spin" />
                     Processing...
                   </>
                 ) : nextClaimAt ? (
                   <>
-                    <Gift className="w-5 h-5 mr-2" />
+                    <Gift className="w-4 h-4 mr-1.5" />
                     {timeLeft}
                   </>
                 ) : (
                   <>
-                    <Gift className="w-5 h-5 mr-2" />
+                    <Gift className="w-4 h-4 mr-1.5" />
                     Claim ₦30,000
                   </>
                 )}
               </Button>
               <Button
                 onClick={handleWithdraw}
-                size="lg"
-                className="flex-1 h-14 rounded-2xl font-bold text-base bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 shadow-lg transition-all hover:scale-[1.02]"
+                className="flex-1 h-11 sm:h-12 rounded-xl sm:rounded-2xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 shadow-lg transition-all hover:scale-[1.02]"
               >
-                <Send className="w-5 h-5 mr-2" />
+                <Send className="w-4 h-4 mr-1.5" />
                 Withdraw
               </Button>
             </div>
@@ -597,7 +595,7 @@ const Dashboard = () => {
         </Card>
 
         {/* Advert Carousel - Top */}
-        <Card className="bg-card/80 backdrop-blur-xl border-border/30 rounded-2xl overflow-hidden shadow-lg animate-fade-in">
+        <Card className="bg-card/80 backdrop-blur-xl border-border/30 rounded-xl sm:rounded-2xl overflow-hidden shadow-md sm:shadow-lg animate-fade-in">
           <CardContent className="p-0">
             <Carousel
               opts={{
@@ -618,7 +616,7 @@ const Dashboard = () => {
                     <img 
                       src={advert} 
                       alt={`RedPay Advertisement ${index + 1}`} 
-                      className="w-full h-auto max-h-28 object-cover" 
+                      className="w-full h-auto max-h-20 sm:max-h-24 object-cover" 
                     />
                   </CarouselItem>
                 ))}
@@ -628,16 +626,16 @@ const Dashboard = () => {
         </Card>
 
         {/* Quick Actions Title */}
-        <div className="flex items-center justify-between pt-2">
-          <h2 className="text-lg font-bold text-foreground">Quick Actions</h2>
+        <div className="flex items-center justify-between pt-1">
+          <h2 className="text-sm sm:text-base font-bold text-foreground">Quick Actions</h2>
           <div className="flex items-center gap-1 text-muted-foreground">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-xs">Explore features</span>
+            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+            <span className="text-[10px] sm:text-xs">Explore features</span>
           </div>
         </div>
 
         {/* Modern Action Buttons Grid */}
-        <div className="grid grid-cols-3 gap-3 animate-fade-in">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 animate-fade-in">
           {actionButtons.map((button, index) => {
             const IconComponent = button.icon;
             return (
@@ -646,14 +644,14 @@ const Dashboard = () => {
                 to={button.route}
                 className="block group"
               >
-                <Card className="relative overflow-hidden bg-card/80 backdrop-blur-xl border-border/30 rounded-2xl transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:border-primary/30 h-full">
-                  <CardContent className="p-4 flex flex-col items-center justify-center space-y-2 text-center">
-                    <div className={`w-12 h-12 bg-gradient-to-br ${button.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      <IconComponent className="w-6 h-6 text-white" />
+                <Card className="relative overflow-hidden bg-card/80 backdrop-blur-xl border-border/30 rounded-xl sm:rounded-2xl transition-all duration-300 hover:scale-[1.03] hover:shadow-lg hover:border-primary/30 h-full">
+                  <CardContent className="p-2.5 sm:p-3 flex flex-col items-center justify-center space-y-1.5 text-center">
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br ${button.color} rounded-lg sm:rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                      <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-foreground">{button.label}</h3>
-                      <p className="text-[10px] text-muted-foreground">{button.description}</p>
+                      <h3 className="font-bold text-[11px] sm:text-xs text-foreground leading-tight">{button.label}</h3>
+                      <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight">{button.description}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -663,7 +661,7 @@ const Dashboard = () => {
         </div>
 
         {/* Advert Carousel - Bottom */}
-        <Card className="bg-card/80 backdrop-blur-xl border-border/30 rounded-2xl overflow-hidden shadow-lg animate-fade-in">
+        <Card className="bg-card/80 backdrop-blur-xl border-border/30 rounded-xl sm:rounded-2xl overflow-hidden shadow-md sm:shadow-lg animate-fade-in">
           <CardContent className="p-0">
             <Carousel
               opts={{
@@ -684,7 +682,7 @@ const Dashboard = () => {
                     <img 
                       src={advert} 
                       alt={`RedPay Advertisement ${index + 1}`} 
-                      className="w-full h-auto max-h-28 object-cover" 
+                      className="w-full h-auto max-h-20 sm:max-h-24 object-cover" 
                     />
                   </CarouselItem>
                 ))}
@@ -694,12 +692,12 @@ const Dashboard = () => {
         </Card>
 
         {/* Footer Trust Section */}
-        <div className="text-center py-4 space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4 text-green-500" />
-            <span className="text-xs text-muted-foreground">256-bit SSL Encrypted • Bank-level Security</span>
+        <div className="text-center py-2 sm:py-3 space-y-1">
+          <div className="flex items-center justify-center gap-1.5">
+            <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+            <span className="text-[10px] sm:text-xs text-muted-foreground">256-bit SSL Encrypted • Bank-level Security</span>
           </div>
-          <p className="text-[10px] text-muted-foreground/60">© 2026 RedPay. All rights reserved.</p>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground/60">© 2026 RedPay. All rights reserved.</p>
         </div>
       </main>
 
