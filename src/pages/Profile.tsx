@@ -4,17 +4,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
-import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, Upload, LogOut } from "lucide-react";
+import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, LogOut, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationSetup } from "@/components/NotificationSetup";
+import { Switch } from "@/components/ui/switch";
 
 const Profile = () => {
   const { profile, refreshProfile } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [hideEmail, setHideEmail] = useState(false);
+  const [hidePhone, setHidePhone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -45,17 +48,26 @@ const Profile = () => {
     toast.success(`${label} copied!`);
   };
 
+  const maskEmail = (email: string) => {
+    const [username, domain] = email.split('@');
+    if (username.length <= 2) return `${username[0]}***@${domain}`;
+    return `${username.slice(0, 2)}${'*'.repeat(Math.min(username.length - 2, 6))}@${domain}`;
+  };
+
+  const maskPhone = (phone: string) => {
+    if (phone.length <= 4) return '*'.repeat(phone.length);
+    return `${phone.slice(0, 3)}${'*'.repeat(phone.length - 6)}${phone.slice(-3)}`;
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !profile.auth_user_id) return;
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Image must be less than 5MB");
       return;
     }
 
-    // Validate file type
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
       toast.error("Only JPG, PNG, and WEBP images are allowed");
       return;
@@ -66,24 +78,20 @@ const Profile = () => {
       const fileExt = file.name.split('.').pop();
       const filePath = `${profile.auth_user_id}/avatar.${fileExt}`;
 
-      // Delete old image if exists
       if (profile.profile_image) {
         await supabase.storage.from('profile-images').remove([profile.profile_image]);
       }
 
-      // Upload new image
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      // Update user profile
       const { error: updateError } = await supabase
         .from('users')
         .update({ profile_image: publicUrl })
@@ -92,7 +100,7 @@ const Profile = () => {
       if (updateError) throw updateError;
 
       await refreshProfile();
-      toast.success("Profile image updated successfully!");
+      toast.success("Profile image updated!");
     } catch (error: any) {
       console.error('Error uploading image:', error);
       toast.error(error.message || "Failed to upload image");
@@ -101,93 +109,232 @@ const Profile = () => {
     }
   };
 
-  const profileFields = [
-    { icon: User, label: "Full Name", value: `${profile.first_name} ${profile.last_name}` },
-    { icon: Mail, label: "Email", value: profile.email },
-    { icon: Phone, label: "Phone Number", value: profile.phone },
-    { icon: MapPin, label: "Country", value: profile.country },
-    { icon: Hash, label: "User ID", value: profile.user_id, copyable: true },
-    { icon: Shield, label: "Status", value: profile.status || "Active" },
-    { icon: Copy, label: "Referral Code", value: profile.referral_code, copyable: true },
-  ];
+  const initials = `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
 
   return (
-    <div className="min-h-screen w-full relative">
+    <div className="min-h-screen w-full relative bg-background">
       <LiquidBackground />
 
-      <header className="relative z-10 px-3 py-2 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-sm">
+      <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-border/20 bg-card/30 backdrop-blur-xl">
         <Logo />
         <ProfileButton />
       </header>
 
-      <main className="relative z-10 px-3 py-4 max-w-4xl mx-auto space-y-4">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
-          <p className="text-sm text-muted-foreground">View your account information</p>
-        </div>
-
-        {/* Profile Avatar */}
-        <div className="flex justify-center animate-fade-in">
-          <div className="relative group">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-full flex items-center justify-center border-4 border-primary/20 overflow-hidden">
-              {profile.profile_image ? (
-                <img src={profile.profile_image} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-12 h-12 text-primary-foreground" />
-              )}
-            </div>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center border-2 border-background hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {uploading ? (
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Camera className="w-4 h-4 text-primary-foreground" />
-              )}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </div>
-        </div>
-
-        {/* Profile Information */}
-        <Card className="bg-card/60 backdrop-blur-sm border-border animate-fade-in float-element">
-          <CardContent className="p-4 space-y-3">
-            {profileFields.map((field, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg hover:bg-secondary/30 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
-                    <field.icon className="w-5 h-5 text-primary" />
+      <main className="relative z-10 px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Hero Section */}
+        <div className="relative animate-fade-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent rounded-3xl blur-2xl" />
+          <Card className="relative bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-xl border-border/30 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <CardContent className="pt-8 pb-6 px-6">
+              {/* Avatar */}
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/60 rounded-full blur-lg opacity-50 group-hover:opacity-70 transition-opacity" />
+                  <div className="relative w-28 h-28 rounded-full border-4 border-primary/30 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5">
+                    {profile.profile_image ? (
+                      <img 
+                        src={profile.profile_image} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary to-primary/80">
+                        <span className="text-3xl font-bold text-primary-foreground">{initials}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">{field.label}</p>
-                    <p className={`text-sm font-semibold text-foreground ${field.copyable ? 'font-mono' : ''}`}>
-                      {field.value}
-                    </p>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="absolute bottom-1 right-1 w-9 h-9 bg-primary rounded-full flex items-center justify-center border-3 border-background shadow-lg hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    {uploading ? (
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4 text-primary-foreground" />
+                    )}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Name & Status */}
+                <div className="text-center space-y-1">
+                  <h1 className="text-2xl font-bold text-foreground">
+                    {profile.first_name} {profile.last_name}
+                  </h1>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-primary/15 rounded-full">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-xs font-medium text-primary">{profile.status || "Active"}</span>
+                    </div>
                   </div>
                 </div>
-                {field.copyable && (
-                  <Button
-                    onClick={() => copyToClipboard(field.value, field.label)}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                )}
               </div>
-            ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Privacy Controls */}
+        <Card className="bg-card/60 backdrop-blur-xl border-border/30 animate-fade-in">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Privacy Controls</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Hide Email</span>
+                </div>
+                <Switch checked={hideEmail} onCheckedChange={setHideEmail} />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">Hide Phone</span>
+                </div>
+                <Switch checked={hidePhone} onCheckedChange={setHidePhone} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Details */}
+        <Card className="bg-card/60 backdrop-blur-xl border-border/30 animate-fade-in">
+          <CardContent className="p-4 space-y-2">
+            {/* Email */}
+            <div className="flex items-center justify-between p-3.5 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors group">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {hideEmail ? maskEmail(profile.email) : profile.email}
+                    </p>
+                    <button
+                      onClick={() => setHideEmail(!hideEmail)}
+                      className="p-1 hover:bg-secondary/50 rounded-md transition-colors"
+                    >
+                      {hideEmail ? (
+                        <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => copyToClipboard(profile.email, "Email")}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            {/* Phone */}
+            <div className="flex items-center justify-between p-3.5 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors group">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Phone Number</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {hidePhone ? maskPhone(profile.phone) : profile.phone}
+                    </p>
+                    <button
+                      onClick={() => setHidePhone(!hidePhone)}
+                      className="p-1 hover:bg-secondary/50 rounded-md transition-colors"
+                    >
+                      {hidePhone ? (
+                        <EyeOff className="w-3.5 h-3.5 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => copyToClipboard(profile.phone, "Phone")}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            {/* Country */}
+            <div className="flex items-center justify-between p-3.5 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Country</p>
+                  <p className="text-sm font-medium text-foreground">{profile.country}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* User ID */}
+            <div className="flex items-center justify-between p-3.5 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors group">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Hash className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">User ID</p>
+                  <p className="text-sm font-mono font-medium text-foreground truncate">{profile.user_id}</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => copyToClipboard(profile.user_id, "User ID")}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            {/* Referral Code */}
+            <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20 group">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/30 to-primary/20 rounded-xl flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">Referral Code</p>
+                  <p className="text-sm font-mono font-bold text-primary">{profile.referral_code}</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => copyToClipboard(profile.referral_code, "Referral Code")}
+                variant="outline"
+                size="sm"
+                className="border-primary/30 hover:bg-primary/10"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                Copy
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -199,15 +346,15 @@ const Profile = () => {
         )}
 
         {/* Actions */}
-        <div className="space-y-2 animate-fade-in">
+        <div className="space-y-3 animate-fade-in pb-4">
           <Link to="/dashboard" className="block">
-            <Button variant="outline" className="w-full" size="lg">
+            <Button variant="outline" className="w-full h-12 text-base font-medium border-border/50 hover:bg-secondary/50" size="lg">
               Back to Dashboard
             </Button>
           </Link>
           <Button 
             variant="destructive" 
-            className="w-full" 
+            className="w-full h-12 text-base font-medium" 
             size="lg"
             onClick={handleLogout}
             disabled={loggingOut}
