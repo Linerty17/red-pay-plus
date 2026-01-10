@@ -477,117 +477,104 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Premium Balance Card */}
-        <Card className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-0 shadow-xl sm:shadow-2xl animate-fade-in">
+        {/* Premium Balance Card - Compact */}
+        <Card className="relative overflow-hidden rounded-xl sm:rounded-2xl border-0 shadow-lg sm:shadow-xl animate-fade-in">
           {/* Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.15)_0%,_transparent_50%)]" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2 blur-2xl" />
           
-          <CardContent className="relative p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <CardContent className="relative p-3 sm:p-4 space-y-2 sm:space-y-2.5">
             {/* Header Row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-primary-foreground/80">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                  <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+              <div className="flex items-center gap-1.5 text-primary-foreground/80">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                  <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 </div>
-                <span className="text-xs sm:text-sm font-medium">Total Balance</span>
+                <span className="text-[10px] sm:text-xs font-medium">Total Balance</span>
               </div>
               <Button
                 onClick={handleOpenVideo}
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg sm:rounded-xl backdrop-blur-sm text-xs"
+                className="h-6 sm:h-7 px-2 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-sm text-[10px] sm:text-xs"
               >
-                <Video className="w-3.5 h-3.5 mr-1" />
+                <Video className="w-3 h-3 mr-1" />
                 Watch
               </Button>
             </div>
 
             {/* Balance Display */}
-            <div className="space-y-0.5">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  ₦{profile?.balance?.toLocaleString() || '0'}
-                </span>
-                <div className="flex items-center gap-1 bg-white/20 px-1.5 py-0.5 rounded-full">
-                  <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-300" />
-                  <span className="text-[10px] sm:text-xs text-green-200 font-medium">+₦30k</span>
-                </div>
-              </div>
-              <p className="text-[10px] sm:text-xs text-primary-foreground/60 font-mono truncate">
-                ID: {profile?.user_id || 'Loading...'}
-              </p>
-            </div>
-
-            {/* Referral Stats */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center">
-                    <Users className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] sm:text-xs text-primary-foreground/70">Total Referrals</p>
-                    <p className="text-lg sm:text-xl font-bold text-white">{profile?.referral_count || 0}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    ₦{profile?.balance?.toLocaleString() || '0'}
+                  </span>
+                  <div className="flex items-center gap-0.5 bg-white/20 px-1 py-0.5 rounded-full">
+                    <TrendingUp className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-green-300" />
+                    <span className="text-[8px] sm:text-[10px] text-green-200 font-medium">+₦30k</span>
                   </div>
                 </div>
-                <Link to="/refer-earn">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="h-8 text-xs text-white hover:bg-white/10 rounded-lg sm:rounded-xl px-2"
-                  >
-                    Invite <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                  </Button>
-                </Link>
+                <p className="text-[8px] sm:text-[10px] text-primary-foreground/60 font-mono truncate">
+                  ID: {profile?.user_id || 'Loading...'}
+                </p>
               </div>
+              {/* Referral Stats - Inline */}
+              <Link to="/refer-earn" className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-2 py-1.5 hover:bg-white/15 transition-colors">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
+                </div>
+                <div className="text-right">
+                  <p className="text-[8px] sm:text-[10px] text-primary-foreground/70">Referrals</p>
+                  <p className="text-sm sm:text-base font-bold text-white leading-none">{profile?.referral_count || 0}</p>
+                </div>
+              </Link>
             </div>
 
             {/* Claim Timer Progress */}
             {nextClaimAt && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                  <span className="text-primary-foreground/70">Next claim available in</span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[9px] sm:text-[10px]">
+                  <span className="text-primary-foreground/70">Next claim in</span>
                   <span className="text-white font-mono font-bold">{timeLeft}</span>
                 </div>
-                <Progress value={claimProgress} className="h-1 sm:h-1.5 bg-white/20" />
+                <Progress value={claimProgress} className="h-1 bg-white/20" />
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-2">
               <Button
                 onClick={handleClaim}
-                className={`flex-1 h-11 sm:h-12 rounded-xl sm:rounded-2xl font-bold text-sm shadow-lg transition-all ${
+                className={`flex-1 h-9 sm:h-10 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all ${
                   nextClaimAt 
                     ? 'bg-white/20 text-white/70 cursor-not-allowed' 
-                    : 'bg-white text-primary hover:bg-white/90 hover:scale-[1.02]'
+                    : 'bg-white text-primary hover:bg-white/90 hover:scale-[1.01]'
                 }`}
                 disabled={!!nextClaimAt || !profile || isProcessing}
               >
                 {isProcessing ? (
                   <>
-                    <Sparkles className="w-4 h-4 mr-1.5 animate-spin" />
+                    <Sparkles className="w-3.5 h-3.5 mr-1 animate-spin" />
                     Processing...
                   </>
                 ) : nextClaimAt ? (
                   <>
-                    <Gift className="w-4 h-4 mr-1.5" />
+                    <Gift className="w-3.5 h-3.5 mr-1" />
                     {timeLeft}
                   </>
                 ) : (
                   <>
-                    <Gift className="w-4 h-4 mr-1.5" />
+                    <Gift className="w-3.5 h-3.5 mr-1" />
                     Claim ₦30,000
                   </>
                 )}
               </Button>
               <Button
                 onClick={handleWithdraw}
-                className="flex-1 h-11 sm:h-12 rounded-xl sm:rounded-2xl font-bold text-sm bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 shadow-lg transition-all hover:scale-[1.02]"
+                className="flex-1 h-9 sm:h-10 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border border-white/20 shadow-md transition-all hover:scale-[1.01]"
               >
-                <Send className="w-4 h-4 mr-1.5" />
+                <Send className="w-3.5 h-3.5 mr-1" />
                 Withdraw
               </Button>
             </div>
