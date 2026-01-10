@@ -20,7 +20,8 @@ import {
 import LiquidBackground from "@/components/LiquidBackground";
 import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
-import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, LogOut, Eye, EyeOff, Sparkles, Pencil } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import { User, Mail, Phone, MapPin, Hash, Shield, Copy, Camera, LogOut, Eye, EyeOff, Sparkles, Pencil, Palette } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -293,6 +294,20 @@ const Profile = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Appearance */}
+        <Card className="bg-card/60 backdrop-blur-xl border-border/30 animate-fade-in">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Palette className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground mb-2">Choose your preferred theme</p>
+              <ThemeToggle />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Privacy Controls */}
         <Card className="bg-card/60 backdrop-blur-xl border-border/30 animate-fade-in">
