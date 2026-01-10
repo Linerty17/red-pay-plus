@@ -61,11 +61,7 @@ export default function AdminReferrals() {
 
       let query = supabase
         .from('referrals')
-        .select(`
-          *,
-          referrer:users!referrals_referrer_id_fkey(email),
-          new_user:users!referrals_new_user_id_fkey(email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
@@ -77,10 +73,25 @@ export default function AdminReferrals() {
 
       if (error) throw error;
 
+      // Fetch user emails for referrers and new users
+      const referrerIds = [...new Set((data || []).map(r => r.referrer_id))];
+      const newUserIds = [...new Set((data || []).map(r => r.new_user_id))];
+      const allUserIds = [...new Set([...referrerIds, ...newUserIds])];
+      
+      let emailMap = new Map<string, string>();
+      if (allUserIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('user_id, email')
+          .in('user_id', allUserIds);
+        
+        emailMap = new Map(usersData?.map(u => [u.user_id, u.email]) || []);
+      }
+
       const formatted = (data || []).map((ref: any) => ({
         ...ref,
-        referrer_email: ref.referrer?.email,
-        new_user_email: ref.new_user?.email,
+        referrer_email: emailMap.get(ref.referrer_id) || 'Unknown',
+        new_user_email: emailMap.get(ref.new_user_id) || 'Unknown',
       }));
 
       setReferrals(prev => reset ? formatted : [...prev, ...formatted]);
