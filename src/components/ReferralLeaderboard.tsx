@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, User } from "lucide-react";
@@ -29,6 +29,8 @@ const ReferralLeaderboard = () => {
   const [userCount, setUserCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const getDateFilter = (filter: TimeFilter): Date | null => {
     const now = new Date();
@@ -132,6 +134,8 @@ const ReferralLeaderboard = () => {
       console.error("Error fetching leaderboard:", error);
     } finally {
       setLoading(false);
+      // Small delay to allow animation to complete smoothly
+      setTimeout(() => setIsAnimating(false), 50);
     }
   };
 
@@ -219,79 +223,107 @@ const ReferralLeaderboard = () => {
               key={btn.value}
               variant={timeFilter === btn.value ? "default" : "ghost"}
               size="sm"
-              className={`flex-1 text-xs ${
-                timeFilter === btn.value ? "" : "hover:bg-secondary/50"
+              className={`flex-1 text-xs transition-all duration-200 ${
+                timeFilter === btn.value 
+                  ? "shadow-md" 
+                  : "hover:bg-secondary/50"
               }`}
-              onClick={() => setTimeFilter(btn.value)}
+              onClick={() => {
+                if (btn.value !== timeFilter) {
+                  setIsAnimating(true);
+                  setTimeFilter(btn.value);
+                }
+              }}
             >
               {btn.label}
             </Button>
           ))}
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-4">
-            <div className="animate-pulse text-muted-foreground text-sm">Loading leaderboard...</div>
-          </div>
-        ) : (
-          <>
-            {topUsers.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground text-sm">
-                No referrals {timeFilter !== "all" ? "in this period" : "yet"}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {topUsers.map((user, index) => (
-                  <div
-                    key={user.user_id}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${getRankStyle(index + 1)}`}
-                  >
+        <div 
+          ref={contentRef}
+          className={`transition-all duration-300 ease-out ${
+            isAnimating ? "opacity-0 translate-y-2 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"
+          }`}
+          onTransitionEnd={() => {
+            if (isAnimating && !loading) {
+              setIsAnimating(false);
+            }
+          }}
+        >
+          {loading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-pulse text-muted-foreground text-sm">Loading leaderboard...</div>
+            </div>
+          ) : (
+            <>
+              {topUsers.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground text-sm animate-fade-in">
+                  No referrals {timeFilter !== "all" ? "in this period" : "yet"}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {topUsers.map((user, index) => (
+                    <div
+                      key={user.user_id}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${getRankStyle(index + 1)}`}
+                      style={{ 
+                        animationDelay: `${index * 100}ms`,
+                        animation: !isAnimating ? `fade-in 0.3s ease-out ${index * 100}ms both` : 'none'
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50 transition-transform duration-200 hover:scale-110">
+                          {getRankIcon(index + 1)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {maskName(user.first_name, user.last_name)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-primary">{user.referral_count}</p>
+                        <p className="text-xs text-muted-foreground">referrals</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Your Rank Section */}
+              {profile && (
+                <div 
+                  className="pt-2 border-t border-border/50"
+                  style={{ 
+                    animation: !isAnimating ? `fade-in 0.3s ease-out ${topUsers.length * 100 + 100}ms both` : 'none'
+                  }}
+                >
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30 transition-all duration-200 hover:bg-primary/15 hover:scale-[1.01]">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50">
-                        {getRankIcon(index + 1)}
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 transition-transform duration-200 hover:scale-110">
+                        <User className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {maskName(user.first_name, user.last_name)}
+                        <p className="text-sm font-medium text-foreground">Your Rank</p>
+                        <p className="text-xs text-muted-foreground">
+                          {userRank ? `#${userRank}` : "Not ranked yet"}
                         </p>
-                        <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-primary">{user.referral_count}</p>
-                      <p className="text-xs text-muted-foreground">referrals</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Your Rank Section */}
-            {profile && (
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Your Rank</p>
+                      <p className="text-lg font-bold text-primary">{userCount}</p>
                       <p className="text-xs text-muted-foreground">
-                        {userRank ? `#${userRank}` : "Not ranked yet"}
+                        {timeFilter === "all" ? "total" : timeFilter === "month" ? "this month" : "this week"}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-primary">{userCount}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {timeFilter === "all" ? "total" : timeFilter === "month" ? "this month" : "this week"}
-                    </p>
-                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
