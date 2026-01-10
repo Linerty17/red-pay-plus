@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, Medal, User } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Trophy, Medal, User, Hash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -54,13 +55,12 @@ const ReferralLeaderboard = () => {
       const dateFilter = getDateFilter(timeFilter);
 
       if (timeFilter === "all") {
-        // For all time, use the referral_count from users table
+        // For all time, use the referral_count from users table - fetch ALL users
         const { data, error } = await supabase
           .from("users")
           .select("user_id, first_name, last_name, referral_count")
           .gt("referral_count", 0)
-          .order("referral_count", { ascending: false })
-          .limit(3);
+          .order("referral_count", { ascending: false });
 
         if (error) throw error;
         setTopUsers(data || []);
@@ -95,20 +95,20 @@ const ReferralLeaderboard = () => {
           referralCounts[ref.referrer_id] = (referralCounts[ref.referrer_id] || 0) + 1;
         });
 
-        // Get user details for top referrers
+        // Get user details for ALL referrers (not just top 3)
         const sortedReferrers = Object.entries(referralCounts)
           .sort(([, a], [, b]) => b - a);
 
-        const topReferrerIds = sortedReferrers.slice(0, 3).map(([id]) => id);
+        const allReferrerIds = sortedReferrers.map(([id]) => id);
 
-        if (topReferrerIds.length > 0) {
+        if (allReferrerIds.length > 0) {
           const { data: users, error: usersError } = await supabase
             .from("users")
             .select("user_id, first_name, last_name")
-            .in("user_id", topReferrerIds);
+            .in("user_id", allReferrerIds);
 
           if (!usersError && users) {
-            const leaderboard = topReferrerIds.map(id => {
+            const leaderboard = allReferrerIds.map(id => {
               const user = users.find(u => u.user_id === id);
               return {
                 user_id: id,
@@ -183,7 +183,7 @@ const ReferralLeaderboard = () => {
       case 3:
         return "bg-gradient-to-r from-amber-600/20 to-amber-700/10 border-amber-600/40";
       default:
-        return "bg-card/60 border-border";
+        return "bg-card/40 border-border/50";
     }
   };
 
@@ -196,7 +196,7 @@ const ReferralLeaderboard = () => {
       case 3:
         return <Medal className="w-5 h-5 text-amber-600" />;
       default:
-        return null;
+        return <Hash className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -262,34 +262,36 @@ const ReferralLeaderboard = () => {
                   No referrals {timeFilter !== "all" ? "in this period" : "yet"}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {topUsers.map((user, index) => (
-                    <div
-                      key={user.user_id}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${getRankStyle(index + 1)}`}
-                      style={{ 
-                        animationDelay: `${index * 100}ms`,
-                        animation: !isAnimating ? `fade-in 0.3s ease-out ${index * 100}ms both` : 'none'
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50 transition-transform duration-200 hover:scale-110">
-                          {getRankIcon(index + 1)}
+                <ScrollArea className="h-[300px] pr-2">
+                  <div className="space-y-2">
+                    {topUsers.map((user, index) => (
+                      <div
+                        key={user.user_id}
+                        className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 hover:scale-[1.02] ${getRankStyle(index + 1)}`}
+                        style={{ 
+                          animationDelay: `${Math.min(index, 10) * 50}ms`,
+                          animation: !isAnimating ? `fade-in 0.3s ease-out ${Math.min(index, 10) * 50}ms both` : 'none'
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/50 transition-transform duration-200 hover:scale-110">
+                            {getRankIcon(index + 1)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {maskName(user.first_name, user.last_name)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {maskName(user.first_name, user.last_name)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Rank #{index + 1}</p>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-primary">{user.referral_count}</p>
+                          <p className="text-xs text-muted-foreground">referrals</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-primary">{user.referral_count}</p>
-                        <p className="text-xs text-muted-foreground">referrals</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
 
               {/* Your Rank Section */}
