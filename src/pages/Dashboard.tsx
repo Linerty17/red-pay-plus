@@ -62,7 +62,11 @@ const Dashboard = () => {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [showTelegramBanner, setShowTelegramBanner] = useState(true); // Temporarily show to all users
+  const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
+    // Check if user has opted out of seeing this banner
+    const neverShowAgain = localStorage.getItem('hideCommunityPopup');
+    return neverShowAgain !== 'true';
+  });
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
   // Only show payment status if navigating from Buy RPC page or on realtime update
