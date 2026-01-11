@@ -92,21 +92,21 @@ export function useUserCounts() {
   });
 }
 
-// Global RPC code
+// Global RPC code - fetches from private_settings (admin-only table)
 export function useGlobalRpcCode() {
   return useQuery({
     queryKey: ['admin', 'globalRpcCode'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('settings')
+        .from('private_settings')
         .select('value')
-        .eq('key', 'rpc_code')
+        .eq('key', 'rpc_access_code')
         .maybeSingle();
       
-      return data?.value || 'RPC2000122';
+      return data?.value || 'RPC000000';
     },
-    staleTime: STALE_TIME.settings,
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Always fetch fresh to ensure admin sees latest code
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -189,6 +189,7 @@ export function useInvalidateAdminData() {
     invalidateStats: () => queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] }),
     invalidatePayments: () => queryClient.invalidateQueries({ queryKey: ['admin', 'paymentCounts'] }),
     invalidateUsers: () => queryClient.invalidateQueries({ queryKey: ['admin', 'userCounts'] }),
+    invalidateRpcCode: () => queryClient.invalidateQueries({ queryKey: ['admin', 'globalRpcCode'] }),
     invalidateAll: () => queryClient.invalidateQueries({ queryKey: ['admin'] }),
   };
 }
