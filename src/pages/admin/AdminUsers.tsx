@@ -34,6 +34,7 @@ export default function AdminUsers() {
   const { user: adminUser } = useAdminAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [editUser, setEditUser] = useState<User | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -41,16 +42,33 @@ export default function AdminUsers() {
   const [banReason, setBanReason] = useState('');
   const [userToBan, setUserToBan] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 50;
 
-  // Direct database fetch - no RPC
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  // Fetch total count
+  const fetchTotalCount = useCallback(async () => {
+    const { count } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+    setTotalCount(count || 0);
+  }, []);
+
+  // Direct database fetch with pagination
+  const fetchUsers = useCallback(async (pageNum: number, append = false) => {
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
+    
     try {
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(from, to);
 
       if (error) {
         console.error('Error fetching users:', error);
@@ -58,18 +76,32 @@ export default function AdminUsers() {
         return;
       }
 
-      setUsers(data || []);
+      if (append) {
+        setUsers(prev => [...prev, ...(data || [])]);
+      } else {
+        setUsers(data || []);
+      }
+      
+      setHasMore((data?.length || 0) === PAGE_SIZE);
     } catch (err) {
       console.error('Fetch error:', err);
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchUsers(0);
+    fetchTotalCount();
+  }, [fetchUsers, fetchTotalCount]);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchUsers(nextPage, true);
+  };
 
   // Filter users based on search
   const filteredUsers = users.filter(user => {
@@ -119,7 +151,7 @@ export default function AdminUsers() {
 
       toast.success('User updated successfully');
       setEditDialogOpen(false);
-      fetchUsers();
+      fetchUsers(0);
     } catch (err: any) {
       toast.error('Failed to update user: ' + err.message);
     } finally {
@@ -160,7 +192,7 @@ export default function AdminUsers() {
 
       toast.success(newStatus === 'Banned' ? 'User banned' : 'User unbanned');
       setBanDialogOpen(false);
-      fetchUsers();
+      fetchUsers(0);
     } catch (err: any) {
       toast.error('Failed to update user status: ' + err.message);
     } finally {
@@ -186,7 +218,8 @@ export default function AdminUsers() {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{users.length}</div>
+          <div className="text-2xl font-bold">{totalCount}</div>
+          <p className="text-xs text-muted-foreground">Showing {users.length} of {totalCount}</p>
         </CardContent>
       </Card>
 
@@ -271,7 +304,22 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* Load More Button */}
+      {hasMore && (
+        <div className="flex justify-center">
+          <Button onClick={loadMore} disabled={loadingMore} variant="outline">
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              `Load More Users (${users.length} of ${totalCount})`
+            )}
+          </Button>
+        </div>
+      )}
+
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
