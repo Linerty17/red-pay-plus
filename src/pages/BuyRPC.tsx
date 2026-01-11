@@ -333,6 +333,37 @@ const BuyRPC = () => {
               </div>
             )}
 
+            {/* Activation Notice - Prominent Warning */}
+            <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-2 border-amber-500/50 rounded-xl p-5 space-y-4 relative overflow-hidden">
+              {/* Animated border glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-orange-400/20 to-amber-400/10 animate-pulse" />
+              
+              <div className="relative space-y-3">
+                <div className="flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-6 h-6 text-amber-500 animate-bounce" style={{ animationDuration: '2s' }} />
+                  <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">Important: Activate Your Code</h3>
+                  <AlertTriangle className="w-6 h-6 text-amber-500 animate-bounce" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+                </div>
+                
+                <p className="text-sm text-foreground font-medium leading-relaxed">
+                  ⚠️ <span className="text-amber-600 dark:text-amber-400 font-semibold">Kindly activate your RPC code before use.</span> Your code will not work until it has been activated on the activation portal.
+                </p>
+
+                <Button 
+                  onClick={() => window.open('https://redpay-validation.vercel.app/', '_blank')}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg shadow-amber-500/30 border-0" 
+                  size="lg"
+                >
+                  <ExternalLink className="w-5 h-5 mr-2" />
+                  Tap Here to Activate Your Code
+                </Button>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Click the button above to open the activation page in a new tab
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Button 
                 onClick={() => navigate('/dashboard', { state: { showPaymentStatus: true } })}
