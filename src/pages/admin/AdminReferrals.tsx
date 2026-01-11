@@ -1,371 +1,347 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { Search, Download, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const PAGE_SIZE = 50;
+import { toast } from 'sonner';
+import { Search, Users, Loader2, Download } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Referral {
   id: string;
   referrer_id: string;
   new_user_id: string;
-  status: string;
-  amount_given: number;
-  created_at: string;
-  manual_credit_notes: string | null;
+  status: string | null;
+  amount_given: number | null;
+  created_at: string | null;
+  confirmed_at: string | null;
+  manually_credited: boolean | null;
   referrer_email?: string;
   new_user_email?: string;
 }
 
 export default function AdminReferrals() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [searchResults, setSearchResults] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedReferral, setSelectedReferral] = useState<Referral | null>(null);
-  const [actionType, setActionType] = useState<'credit' | 'revoke' | null>(null);
-  const [notes, setNotes] = useState('');
-  const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 50;
 
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset on filter change
-  useEffect(() => {
-    setReferrals([]);
-    setPage(0);
-    setHasMore(true);
-    fetchReferrals(0, true);
+  // Fetch total count
+  const fetchTotalCount = useCallback(async () => {
+    let query = supabase.from('referrals').select('*', { count: 'exact', head: true });
+    if (statusFilter !== 'all') {
+      query = query.eq('status', statusFilter);
+    }
+    const { count } = await query;
+    setTotalCount(count || 0);
   }, [statusFilter]);
 
-  const fetchReferrals = async (pageNum: number, reset = false) => {
+  // Fetch user emails for display
+  const fetchUserEmails = async (referralsList: Referral[]) => {
+    const userIds = [...new Set([
+      ...referralsList.map(r => r.referrer_id),
+      ...referralsList.map(r => r.new_user_id)
+    ])];
+
+    if (userIds.length === 0) return referralsList;
+
+    const { data: users } = await supabase
+      .from('users')
+      .select('user_id, email')
+      .in('user_id', userIds);
+
+    const emailMap = new Map(users?.map(u => [u.user_id, u.email]) || []);
+
+    return referralsList.map(r => ({
+      ...r,
+      referrer_email: emailMap.get(r.referrer_id) || r.referrer_id,
+      new_user_email: emailMap.get(r.new_user_id) || r.new_user_id
+    }));
+  };
+
+  // Direct database fetch with pagination
+  const fetchReferrals = useCallback(async (pageNum: number, append = false) => {
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
+    
     try {
-      if (reset) setLoading(true);
-      else setIsLoadingMore(true);
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      
+      let query = supabase
+        .from('referrals')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-      let formatted: Referral[] = [];
-
-      // Try RPC first
-      const rpcResult = await supabase.rpc('admin_get_referrals', {
-        p_limit: PAGE_SIZE,
-        p_offset: pageNum * PAGE_SIZE,
-        p_status: statusFilter === 'all' ? null : statusFilter
-      });
-
-      if (rpcResult.error) {
-        console.log('RPC failed, trying direct query:', rpcResult.error.message);
-        
-        // Fall back to direct query
-        let query = supabase
-          .from('referrals')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
-
-        if (statusFilter !== 'all') {
-          query = query.eq('status', statusFilter);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-
-        // Fetch user emails
-        const referrerIds = [...new Set((data || []).map(r => r.referrer_id))];
-        const newUserIds = [...new Set((data || []).map(r => r.new_user_id))];
-        const allUserIds = [...new Set([...referrerIds, ...newUserIds])];
-        
-        let emailMap = new Map<string, string>();
-        if (allUserIds.length > 0) {
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('user_id, email')
-            .in('user_id', allUserIds);
-          
-          emailMap = new Map(usersData?.map(u => [u.user_id, u.email]) || []);
-        }
-
-        formatted = (data || []).map((ref: any) => ({
-          ...ref,
-          referrer_email: emailMap.get(ref.referrer_id) || 'Unknown',
-          new_user_email: emailMap.get(ref.new_user_id) || 'Unknown',
-        }));
-      } else {
-        formatted = (rpcResult.data || []).map((ref: any) => ({
-          ...ref,
-          referrer_email: ref.referrer_email || 'Unknown',
-          new_user_email: ref.new_user_email || 'Unknown',
-        }));
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
       }
 
-      setReferrals(prev => reset ? formatted : [...prev, ...formatted]);
-      setHasMore(formatted.length === PAGE_SIZE);
-      setPage(pageNum);
-    } catch (error: any) {
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching referrals:', error);
+        toast.error('Failed to load referrals: ' + error.message);
+        return;
+      }
+
+      const enrichedData = await fetchUserEmails(data || []);
+
+      if (append) {
+        setReferrals(prev => [...prev, ...enrichedData]);
+      } else {
+        setReferrals(enrichedData);
+      }
+      
+      setHasMore((data?.length || 0) === PAGE_SIZE);
+    } catch (err) {
+      console.error('Fetch error:', err);
       toast.error('Failed to load referrals');
-      console.error(error);
     } finally {
       setLoading(false);
-      setIsLoadingMore(false);
+      setLoadingMore(false);
     }
-  };
+  }, [statusFilter]);
 
-  const loadMore = useCallback(() => {
-    if (!isLoadingMore && hasMore) {
-      fetchReferrals(page + 1);
+  // Search database directly
+  const searchReferrals = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
     }
-  }, [page, isLoadingMore, hasMore]);
-
-  // Client-side search filter
-  const filteredReferrals = useMemo(() => {
-    if (!debouncedSearch) return referrals;
-    return referrals.filter(r =>
-      r.referrer_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      r.new_user_email?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      r.referrer_id.includes(debouncedSearch) ||
-      r.new_user_id.includes(debouncedSearch)
-    );
-  }, [referrals, debouncedSearch]);
-
-  const virtualizer = useVirtualizer({
-    count: filteredReferrals.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 56,
-    overscan: 10,
-  });
-
-  const handleScroll = useCallback(() => {
-    if (!parentRef.current || isLoadingMore || !hasMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-    if (scrollHeight - scrollTop - clientHeight < 300) {
-      loadMore();
-    }
-  }, [loadMore, isLoadingMore, hasMore]);
-
-  const handleManualAction = async () => {
-    if (!selectedReferral) return;
-
+    
+    setSearching(true);
     try {
-      if (actionType === 'credit') {
-        const { error } = await supabase.rpc('confirm_referral', {
-          _new_user_id: selectedReferral.new_user_id,
-          _amount: 5000,
-        });
+      // First get user IDs that match the search
+      const { data: matchingUsers } = await supabase
+        .from('users')
+        .select('user_id')
+        .or(`email.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,user_id.ilike.%${query}%`)
+        .limit(50);
 
-        if (error) throw error;
+      const userIds = matchingUsers?.map(u => u.user_id) || [];
 
-        await supabase
-          .from('audit_logs')
-          .insert({
-            admin_user_id: (await supabase.auth.getUser()).data.user?.id,
-            action_type: 'manual_referral_credit',
-            details: { referral_id: selectedReferral.id, notes },
-          });
-
-        toast.success('Referral credited successfully');
+      if (userIds.length === 0) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
       }
 
-      setSelectedReferral(null);
-      setActionType(null);
-      setNotes('');
-      fetchReferrals(0, true);
-    } catch (error: any) {
-      toast.error(error.message || 'Action failed');
+      // Now get referrals where referrer or new_user matches
+      let dbQuery = supabase
+        .from('referrals')
+        .select('*')
+        .or(`referrer_id.in.(${userIds.join(',')}),new_user_id.in.(${userIds.join(',')})`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (statusFilter !== 'all') {
+        dbQuery = dbQuery.eq('status', statusFilter);
+      }
+
+      const { data, error } = await dbQuery;
+
+      if (error) throw error;
+
+      const enrichedData = await fetchUserEmails(data || []);
+      setSearchResults(enrichedData);
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      setSearching(false);
     }
+  }, [statusFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search.trim()) {
+        searchReferrals(search);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, searchReferrals]);
+
+  useEffect(() => {
+    setPage(0);
+    fetchReferrals(0);
+    fetchTotalCount();
+  }, [fetchReferrals, fetchTotalCount, statusFilter]);
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchReferrals(nextPage, true);
   };
 
-  const exportToCSV = () => {
-    const csv = [
-      ['Referrer Email', 'New User Email', 'Status', 'Amount', 'Date', 'Notes'],
-      ...filteredReferrals.map(r => [
-        r.referrer_email || '',
-        r.new_user_email || '',
-        r.status || '',
-        r.amount_given || 0,
-        new Date(r.created_at).toLocaleDateString(),
-        r.manual_credit_notes || '',
-      ]),
-    ].map(row => row.join(',')).join('\n');
+  // Show search results when searching, otherwise show paginated referrals
+  const displayReferrals = search.trim() ? searchResults : referrals;
 
+  // Export to CSV
+  const exportToCSV = () => {
+    const csvData = displayReferrals.map(r => ({
+      'Referrer Email': r.referrer_email || r.referrer_id,
+      'New User Email': r.new_user_email || r.new_user_id,
+      'Status': r.status || 'pending',
+      'Amount': r.amount_given || 0,
+      'Date': r.created_at ? format(new Date(r.created_at), 'yyyy-MM-dd HH:mm') : ''
+    }));
+
+    const headers = Object.keys(csvData[0] || {}).join(',');
+    const rows = csvData.map(row => Object.values(row).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `referrals-${new Date().toISOString()}.csv`;
+    a.download = `referrals-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported successfully');
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'confirmed':
+        return <Badge className="bg-green-500">Confirmed</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status || 'Pending'}</Badge>;
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading referrals...</span>
       </div>
     );
   }
 
-  const items = virtualizer.getVirtualItems();
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Referral Management</h1>
-        <p className="text-muted-foreground">
-          View and manage all referrals ({filteredReferrals.length.toLocaleString()} loaded)
-        </p>
-      </div>
+      {/* Stats Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{totalCount}</div>
+          <p className="text-xs text-muted-foreground">Showing {referrals.length} of {totalCount}</p>
+        </CardContent>
+      </Card>
 
-      <div className="flex gap-4">
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by email or ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            placeholder="Type email, name or user ID to search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-10"
           />
+          {searching && (
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={exportToCSV} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
+        <Button variant="outline" onClick={exportToCSV}>
+          <Download className="h-4 w-4 mr-2" />
           Export CSV
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader className="sticky top-0 bg-background z-10">
-            <TableRow>
-              <TableHead className="w-[200px]">Referrer</TableHead>
-              <TableHead className="w-[200px]">New User</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="w-[100px]">Amount</TableHead>
-              <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead className="w-[120px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-        </Table>
+      {search.trim() && (
+        <p className="text-sm text-muted-foreground">
+          Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{search}"
+          <Button variant="link" className="p-0 h-auto ml-2" onClick={() => setSearch('')}>
+            Clear search
+          </Button>
+        </p>
+      )}
 
-        <div
-          ref={parentRef}
-          onScroll={handleScroll}
-          className="overflow-auto"
-          style={{ height: '600px' }}
-        >
-          {filteredReferrals.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-muted-foreground">
-              No referrals found
-            </div>
-          ) : (
-            <div
-              style={{
-                height: `${virtualizer.getTotalSize()}px`,
-                width: '100%',
-                position: 'relative',
-              }}
-            >
-              <Table>
-                <TableBody>
-                  {items.map((virtualRow) => {
-                    const referral = filteredReferrals[virtualRow.index];
-                    return (
-                      <TableRow
-                        key={referral.id}
-                        data-index={virtualRow.index}
-                        ref={virtualizer.measureElement}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          transform: `translateY(${virtualRow.start}px)`,
-                          display: 'table-row',
-                        }}
-                      >
-                        <TableCell className="w-[200px]">{referral.referrer_email}</TableCell>
-                        <TableCell className="w-[200px]">{referral.new_user_email}</TableCell>
-                        <TableCell className="w-[100px]">
-                          <Badge variant={referral.status === 'confirmed' ? 'default' : 'secondary'}>
-                            {referral.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="w-[100px]">₦{referral.amount_given?.toLocaleString() || 0}</TableCell>
-                        <TableCell className="w-[120px]">{new Date(referral.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="w-[120px]">
-                          {referral.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedReferral(referral);
-                                setActionType('credit');
-                              }}
-                            >
-                              Manual Credit
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {isLoadingMore && (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Dialog open={!!selectedReferral} onOpenChange={() => setSelectedReferral(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manual Credit Confirmation</DialogTitle>
-            <DialogDescription>
-              Credit ₦5,000 to {selectedReferral?.referrer_email} for referring {selectedReferral?.new_user_email}?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Textarea
-              placeholder="Add notes for audit log..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+      {/* Referrals Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Referrer</TableHead>
+                  <TableHead>New User</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayReferrals.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      {searching ? 'Searching...' : search ? 'No referrals found matching your search' : 'No referrals found'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  displayReferrals.map((referral) => (
+                    <TableRow key={referral.id}>
+                      <TableCell className="text-sm">{referral.referrer_email}</TableCell>
+                      <TableCell className="text-sm">{referral.new_user_email}</TableCell>
+                      <TableCell>{getStatusBadge(referral.status)}</TableCell>
+                      <TableCell>₦{(referral.amount_given || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {referral.created_at ? format(new Date(referral.created_at), 'MMM d, yyyy') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedReferral(null)}>Cancel</Button>
-            <Button onClick={handleManualAction}>Confirm Credit</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Load More Button */}
+      {hasMore && !search.trim() && (
+        <div className="flex justify-center">
+          <Button onClick={loadMore} disabled={loadingMore} variant="outline">
+            {loadingMore ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              `Load More Referrals (${referrals.length} of ${totalCount})`
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
