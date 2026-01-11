@@ -67,79 +67,41 @@ const ReferralLeaderboard = () => {
       const dateFilter = getDateFilter(timeFilter);
 
       if (timeFilter === "all") {
-        // For all time, use the referral_count from users table - fetch ALL users
+        // For all time, use the database function to get leaderboard data
         const { data, error } = await supabase
-          .from("users")
-          .select("user_id, first_name, last_name, referral_count")
-          .gt("referral_count", 0)
-          .order("referral_count", { ascending: false });
+          .rpc('get_leaderboard');
 
         if (error) throw error;
         setTopUsers(data || []);
 
         // Get user's rank for all time
-        if (profile?.user_id) {
-          const { data: allUsers, error: rankError } = await supabase
-            .from("users")
-            .select("user_id, referral_count")
-            .gt("referral_count", 0)
-            .order("referral_count", { ascending: false });
-
-          if (!rankError && allUsers) {
-            const userIndex = allUsers.findIndex(u => u.user_id === profile.user_id);
-            setUserRank(userIndex >= 0 ? userIndex + 1 : null);
-            setUserCount(profile.referral_count || 0);
-          }
+        if (profile?.user_id && data) {
+          const userIndex = data.findIndex((u: LeaderboardUser) => u.user_id === profile.user_id);
+          setUserRank(userIndex >= 0 ? userIndex + 1 : null);
+          setUserCount(profile.referral_count || 0);
         }
       } else {
-        // For time-filtered, query referrals table
-        const { data: referrals, error } = await supabase
-          .from("referrals")
-          .select("referrer_id, created_at")
-          .gte("created_at", dateFilter!.toISOString())
-          .eq("status", "confirmed");
+        // For time-filtered, use the database function
+        const { data, error } = await supabase
+          .rpc('get_leaderboard_filtered', { date_from: dateFilter!.toISOString() });
 
         if (error) throw error;
-
-        // Count referrals per user
-        const referralCounts: Record<string, number> = {};
-        referrals?.forEach(ref => {
-          referralCounts[ref.referrer_id] = (referralCounts[ref.referrer_id] || 0) + 1;
-        });
-
-        // Get user details for ALL referrers (not just top 3)
-        const sortedReferrers = Object.entries(referralCounts)
-          .sort(([, a], [, b]) => b - a);
-
-        const allReferrerIds = sortedReferrers.map(([id]) => id);
-
-        if (allReferrerIds.length > 0) {
-          const { data: users, error: usersError } = await supabase
-            .from("users")
-            .select("user_id, first_name, last_name")
-            .in("user_id", allReferrerIds);
-
-          if (!usersError && users) {
-            const leaderboard = allReferrerIds.map(id => {
-              const user = users.find(u => u.user_id === id);
-              return {
-                user_id: id,
-                first_name: user?.first_name || "Unknown",
-                last_name: user?.last_name || "User",
-                referral_count: referralCounts[id],
-              };
-            });
-            setTopUsers(leaderboard);
-          }
-        } else {
-          setTopUsers([]);
-        }
+        
+        // Convert bigint referral_count to number
+        const leaderboard = (data || []).map((u: any) => ({
+          user_id: u.user_id,
+          first_name: u.first_name,
+          last_name: u.last_name,
+          referral_count: Number(u.referral_count)
+        }));
+        
+        setTopUsers(leaderboard);
 
         // Get user's rank for filtered period
         if (profile?.user_id) {
-          const userIndex = sortedReferrers.findIndex(([id]) => id === profile.user_id);
+          const userIndex = leaderboard.findIndex((u: LeaderboardUser) => u.user_id === profile.user_id);
           setUserRank(userIndex >= 0 ? userIndex + 1 : null);
-          setUserCount(referralCounts[profile.user_id] || 0);
+          setUserCount(leaderboard.find((u: LeaderboardUser) => u.user_id === profile.user_id)?.referral_count || 0);
         }
       }
     } catch (error) {

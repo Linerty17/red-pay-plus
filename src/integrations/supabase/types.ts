@@ -656,6 +656,24 @@ export type Database = {
         Args: { _amount?: number; _new_user_id: string }
         Returns: Json
       }
+      get_leaderboard: {
+        Args: never
+        Returns: {
+          first_name: string
+          last_name: string
+          referral_count: number
+          user_id: string
+        }[]
+      }
+      get_leaderboard_filtered: {
+        Args: { date_from: string }
+        Returns: {
+          first_name: string
+          last_name: string
+          referral_count: number
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
