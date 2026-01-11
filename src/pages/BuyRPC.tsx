@@ -188,13 +188,52 @@ const BuyRPC = () => {
     navigate("/payment-instructions");
   };
 
-  // Show loading step animation when processing form
+  // Show loading step animation when processing form with enhanced transition
   if (loadingStep) {
+    const steps = ["Initiating", "Verifying", "Processing"];
+    const currentStepIndex = steps.indexOf(loadingStep);
+    
     return (
       <div className="min-h-screen w-full relative flex items-center justify-center">
         <LiquidBackground />
-        <div className="relative z-10">
-          <LoadingSpinner message={loadingStep} />
+        <div className="relative z-10 flex flex-col items-center gap-6 p-8">
+          {/* Animated circular loader */}
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+            <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <div className="absolute inset-2 rounded-full border-4 border-primary/30 border-b-transparent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+            <div className="absolute inset-4 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+            </div>
+          </div>
+          
+          {/* Step indicators */}
+          <div className="flex items-center gap-2">
+            {steps.map((step, index) => (
+              <div key={step} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
+                  index < currentStepIndex 
+                    ? 'bg-primary text-primary-foreground scale-90' 
+                    : index === currentStepIndex 
+                      ? 'bg-primary text-primary-foreground animate-pulse scale-110' 
+                      : 'bg-muted text-muted-foreground scale-75'
+                }`}>
+                  {index < currentStepIndex ? '✓' : index + 1}
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-8 h-0.5 mx-1 transition-all duration-500 ${
+                    index < currentStepIndex ? 'bg-primary' : 'bg-muted'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* Current step label */}
+          <div className="text-center">
+            <p className="text-lg font-semibold text-foreground animate-pulse">{loadingStep}...</p>
+            <p className="text-xs text-muted-foreground mt-1">Please wait while we prepare your payment</p>
+          </div>
         </div>
       </div>
     );
