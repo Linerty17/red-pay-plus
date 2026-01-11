@@ -403,14 +403,14 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="mx-4 max-w-sm w-full relative">
             {/* Animated glow effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-3xl blur-lg opacity-75 animate-pulse" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-red-500 to-orange-500 rounded-3xl blur-lg opacity-75 animate-pulse" />
             
             <Card className="relative bg-gradient-to-br from-card via-card to-card/95 border-0 shadow-2xl rounded-3xl overflow-hidden">
               {/* Decorative background elements */}
               <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-primary/30 to-transparent rounded-full blur-3xl" />
-                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-purple-500/30 to-transparent rounded-full blur-3xl" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-gradient-to-br from-pink-500/10 to-transparent rounded-full blur-3xl" />
+                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-red-500/30 to-transparent rounded-full blur-3xl" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-gradient-to-br from-orange-500/10 to-transparent rounded-full blur-3xl" />
               </div>
               
               <CardContent className="relative p-6 pt-8 text-center space-y-5">
@@ -430,19 +430,19 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
                   <div className="absolute inset-2 rounded-full border-2 border-primary/50 animate-pulse" />
                   {/* Icon container */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl transform rotate-3 hover:rotate-0 transition-transform">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-red-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-xl transform rotate-3 hover:rotate-0 transition-transform">
                       <Send className="w-8 h-8 text-white" />
                     </div>
                   </div>
                   {/* Sparkle decorations */}
                   <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-pulse" />
-                  <Sparkles className="absolute -bottom-1 -left-1 w-4 h-4 text-purple-400 animate-pulse delay-100" />
+                  <Sparkles className="absolute -bottom-1 -left-1 w-4 h-4 text-orange-400 animate-pulse delay-100" />
                 </div>
 
                 {/* Content */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-center gap-2">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-purple-500 bg-clip-text text-transparent">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-red-500 bg-clip-text text-transparent">
                       Join Our Community
                     </h3>
                     <BadgeCheck className="w-5 h-5 text-primary" />
@@ -457,7 +457,7 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
                   <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
                     <Gift className="w-3 h-3" /> Exclusive Bonuses
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-medium flex items-center gap-1">
+                  <span className="px-3 py-1 rounded-full bg-orange-500/10 text-orange-500 text-xs font-medium flex items-center gap-1">
                     <Zap className="w-3 h-3" /> Fast Updates
                   </span>
                   <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-medium flex items-center gap-1">
@@ -468,7 +468,7 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
                 {/* Action buttons */}
                 <div className="space-y-3 pt-2">
                   <Button 
-                    className="w-full h-12 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:opacity-90 text-white font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-primary via-red-500 to-orange-500 hover:opacity-90 text-white font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => {
                       setShowCommunityConfetti(true);
                       // Small delay before opening link for confetti effect
