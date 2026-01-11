@@ -190,13 +190,15 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 7: Create referral record for tracking
+    // Step 7: Create referral record with CONFIRMED status (auto-confirmation)
     const { error: referralRecordError } = await supabaseAdmin
       .from('referrals')
       .insert({
         referrer_id: referrer.user_id,
         new_user_id: new_user_id,
-        amount_given: 5000
+        amount_given: 5000,
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString()
       })
 
     if (referralRecordError) {
