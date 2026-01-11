@@ -39,6 +39,7 @@ const BuyRPC = () => {
   const [success, setSuccess] = useState(false);
   const [showNoticeDialog, setShowNoticeDialog] = useState(false);
   const [approvedPurchase, setApprovedPurchase] = useState<any>(null);
+  const [pendingPurchase, setPendingPurchase] = useState<any>(null);
   const [globalRpcCode, setGlobalRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
 
@@ -89,11 +90,13 @@ const BuyRPC = () => {
           },
           (payload) => {
             const newData = payload.new as any;
-            // If payment was cancelled, clear the approved purchase state
-            if (newData.status === 'cancelled') {
+            // If payment was cancelled or rejected, clear the pending purchase state
+            if (newData.status === 'cancelled' || newData.status === 'rejected') {
               setApprovedPurchase(null);
+              setPendingPurchase(null);
             } else if (newData.status === 'approved') {
               setApprovedPurchase(newData);
+              setPendingPurchase(null);
               fetchGlobalRpcCode();
             }
           }
@@ -146,6 +149,20 @@ const BuyRPC = () => {
         
         if (settingsData?.value) {
           setGlobalRpcCode(settingsData.value);
+        }
+      } else {
+        // Check if user has a pending purchase
+        const { data: pendingData } = await supabase
+          .from('rpc_purchases')
+          .select('*')
+          .eq('user_id', profile.user_id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingData) {
+          setPendingPurchase(pendingData);
         }
       }
     } catch (error) {
@@ -329,6 +346,82 @@ const BuyRPC = () => {
               <Button 
                 onClick={() => navigate('/dashboard', { state: { showPaymentStatus: true } })}
                 variant="outline"
+                className="w-full" 
+                size="lg"
+              >
+                Back to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // If user has pending purchase, show pending status
+  if (pendingPurchase) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center">
+        <LiquidBackground />
+        <Card className="relative z-10 mx-4 max-w-md w-full bg-card/90 backdrop-blur-sm border-orange-500/50 shadow-2xl animate-scale-in">
+          <CardContent className="p-8 text-center space-y-6">
+            {/* Animated Clock icon */}
+            <div className="relative">
+              <div className="w-28 h-28 mx-auto relative">
+                <div className="absolute inset-0 bg-orange-500/20 rounded-full animate-pulse" style={{ animationDuration: '2s' }} />
+                <div className="absolute inset-0 bg-orange-500/10 rounded-full" />
+                <div className="relative w-28 h-28 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30">
+                  <AlertTriangle className="w-14 h-14 text-white" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-orange-500 flex items-center justify-center gap-2">
+                Payment Under Review ⏳
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                You already have a payment waiting for approval. Please wait while our team verifies your payment.
+              </p>
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 space-y-2 text-left">
+              <p className="text-sm font-semibold text-orange-500">What happens next?</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Our team will verify your payment proof</li>
+                <li>• You'll receive a notification once approved</li>
+                <li>• This usually takes a few minutes to hours</li>
+                <li>• Contact support if it takes longer than 24 hours</li>
+              </ul>
+            </div>
+
+            {/* Submission Details */}
+            <div className="bg-secondary/50 border border-border rounded-lg p-4 space-y-2 text-left">
+              <p className="text-sm font-semibold text-foreground">Your Submission</p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Submitted: {new Date(pendingPurchase.created_at).toLocaleString()}</p>
+                <p>Name: {pendingPurchase.user_name}</p>
+                <p>Email: {pendingPurchase.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={() => window.open('https://t.me/OfficialChixx9ja', '_blank')}
+                variant="outline"
+                className="w-full border-orange-500/30 hover:bg-orange-500/10" 
+                size="lg"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+                Contact Support
+              </Button>
+              
+              <Button 
+                onClick={() => navigate('/dashboard')}
+                variant="ghost"
                 className="w-full" 
                 size="lg"
               >
