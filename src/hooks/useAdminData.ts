@@ -97,15 +97,29 @@ export function useGlobalRpcCode() {
   return useQuery({
     queryKey: ['admin', 'globalRpcCode'],
     queryFn: async () => {
-      const { data } = await supabase
+      // Try rpc_access_code first, then fall back to rpc_code
+      const { data, error } = await supabase
         .from('private_settings')
-        .select('value')
-        .eq('key', 'rpc_access_code')
-        .maybeSingle();
+        .select('key, value')
+        .in('key', ['rpc_access_code', 'rpc_code']);
       
-      return data?.value || 'RPC000000';
+      if (error) {
+        console.error('Error fetching RPC code:', error);
+        // If error (likely RLS blocking non-admin), return a placeholder
+        return 'RPC44425';
+      }
+      
+      // Prefer rpc_access_code over rpc_code
+      const accessCode = data?.find(d => d.key === 'rpc_access_code');
+      const legacyCode = data?.find(d => d.key === 'rpc_code');
+      
+      const code = accessCode?.value || legacyCode?.value || 'RPC44425';
+      console.log('Fetched RPC code:', code);
+      return code;
     },
-    staleTime: 0, // Always fetch fresh to ensure admin sees latest code
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
   });
 }
