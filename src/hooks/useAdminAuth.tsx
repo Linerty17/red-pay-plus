@@ -28,17 +28,35 @@ export function useAdminAuth() {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Check for existing session and refresh it to get latest permissions
+    const initSession = async () => {
+      // First try to refresh the session to get updated claims
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (session?.user) {
-        checkAdminRole(session.user.id);
+      if (refreshError) {
+        console.log('Session refresh failed, getting existing session');
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          checkAdminRole(session.user.id);
+        } else {
+          setLoading(false);
+        }
       } else {
-        setLoading(false);
+        setSession(refreshData.session);
+        setUser(refreshData.session?.user ?? null);
+        
+        if (refreshData.session?.user) {
+          checkAdminRole(refreshData.session.user.id);
+        } else {
+          setLoading(false);
+        }
       }
-    });
+    };
+    
+    initSession();
 
     return () => subscription.unsubscribe();
   }, []);
