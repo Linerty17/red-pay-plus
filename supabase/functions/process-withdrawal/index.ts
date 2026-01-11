@@ -79,33 +79,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch valid access code from private_settings table (admin-managed, can be changed anytime)
-    const { data: settingData, error: settingError } = await supabase
-      .from('private_settings')
-      .select('value')
-      .eq('key', 'rpc_access_code')
-      .single();
-
-    if (settingError || !settingData) {
-      console.error('Failed to fetch RPC access code from private_settings:', settingError);
-      return new Response(
-        JSON.stringify({ error: 'System configuration error', success: false }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const validAccessCode = settingData.value;
-
-    // SERVER-SIDE ACCESS CODE VALIDATION against admin-managed global code
-    if (access_code !== validAccessCode) {
-      console.error('Invalid access code attempt for user:', user_id);
-      return new Response(
-        JSON.stringify({ error: 'Invalid access code', success: false, redirect: '/buy-rpc' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get user profile with balance
+    // Get user profile with balance and personal rpc_code
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -116,6 +90,18 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User not found', success: false }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SERVER-SIDE ACCESS CODE VALIDATION against user's personal rpc_code
+    // Admin updates all users' rpc_code when changing the global code
+    const validAccessCode = user.rpc_code;
+
+    if (!validAccessCode || access_code !== validAccessCode) {
+      console.error('Invalid access code attempt for user:', user_id);
+      return new Response(
+        JSON.stringify({ error: 'Invalid access code', success: false, redirect: '/buy-rpc' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
