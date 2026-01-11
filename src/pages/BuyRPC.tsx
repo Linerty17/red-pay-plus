@@ -327,7 +327,7 @@ const BuyRPC = () => {
               </Button>
               
               <Button 
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/dashboard', { state: { showPaymentStatus: true } })}
                 variant="outline"
                 className="w-full" 
                 size="lg"

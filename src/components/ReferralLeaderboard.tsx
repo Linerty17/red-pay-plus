@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Trophy, Medal, User, Hash, Search, X } from "lucide-react";
+import { Trophy, Medal, User, Hash, Search, X, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -188,6 +188,18 @@ const ReferralLeaderboard = () => {
             <Trophy className="w-5 h-5 text-primary" />
             <h3 className="font-semibold text-foreground">Top Referrers</h3>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              setIsAnimating(true);
+              fetchLeaderboard();
+            }}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
 
         {/* Time Filter Buttons */}

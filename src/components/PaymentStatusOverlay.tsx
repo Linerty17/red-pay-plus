@@ -9,9 +9,11 @@ import { useNavigate } from "react-router-dom";
 interface PaymentStatusOverlayProps {
   userId: string;
   onClose: () => void;
+  checkOnMount?: boolean; // Only check for existing unacknowledged status on mount
+  onStatusFound?: () => void; // Callback when a status is found (for realtime)
 }
 
-export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayProps) => {
+export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onStatusFound }: PaymentStatusOverlayProps) => {
   const navigate = useNavigate();
   const [purchase, setPurchase] = useState<any>(null);
   const [globalRpcCode, setGlobalRpcCode] = useState<string | null>(null);
@@ -19,10 +21,14 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkPaymentStatus();
+    if (checkOnMount) {
+      checkPaymentStatus();
+    } else {
+      setLoading(false);
+    }
     fetchGlobalRpcCode();
     
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates - this always runs to catch live updates
     const channel = supabase
       .channel('payment-status-overlay')
       .on(
@@ -38,6 +44,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
           const newData = payload.new as any;
           if (newData && !newData.status_acknowledged && (newData.status === 'approved' || newData.status === 'rejected' || newData.status === 'cancelled')) {
             setPurchase(newData);
+            onStatusFound?.(); // Notify parent to show overlay
             if (newData.status === 'approved') {
               fetchGlobalRpcCode();
             }
@@ -49,7 +56,7 @@ export const PaymentStatusOverlay = ({ userId, onClose }: PaymentStatusOverlayPr
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, [userId, checkOnMount]);
 
   const fetchGlobalRpcCode = async () => {
     const { data } = await supabase
