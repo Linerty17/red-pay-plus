@@ -197,32 +197,10 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
               </div>
             )}
 
-            {/* Activation Instructions */}
-            <div className="bg-secondary/50 border border-border rounded-lg p-4 space-y-2 text-left">
-              <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-primary" />
-                Important: Activate Before Use
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Before using your RPC code, you must first activate it through our validation portal. 
-                Copy your code above, then click the button below to complete the activation process.
-              </p>
-            </div>
-
             <div className="space-y-3">
               <Button 
-                onClick={() => window.open('https://redpay-validation.vercel.app/', '_blank')}
-                className="w-full bg-primary hover:bg-primary/90 shadow-lg" 
-                size="lg"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Click Here to Activate Code
-              </Button>
-              
-              <Button 
                 onClick={acknowledgeStatus}
-                variant="outline"
-                className="w-full" 
+                className="w-full bg-primary hover:bg-primary/90 shadow-lg" 
                 size="lg"
               >
                 Continue to Dashboard
