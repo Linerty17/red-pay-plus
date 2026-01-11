@@ -605,32 +605,38 @@ const PaymentInstructions = () => {
             )}
 
             {/* Activation Notice - Prominent Warning */}
-            <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border-2 border-amber-500/50 rounded-xl p-5 space-y-4 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500/20 via-amber-500/20 to-red-500/20 border-2 border-red-500/60 rounded-xl p-5 space-y-4 relative overflow-hidden shadow-lg shadow-red-500/20">
               {/* Animated border glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-orange-400/20 to-amber-400/10 animate-pulse" />
+              <div className="absolute inset-0 bg-gradient-to-r from-red-400/10 via-amber-400/20 to-red-400/10 animate-pulse" />
               
-              <div className="relative space-y-3">
+              <div className="relative space-y-4">
                 <div className="flex items-center justify-center gap-2">
-                  <AlertTriangle className="w-6 h-6 text-amber-500 animate-bounce" style={{ animationDuration: '2s' }} />
-                  <h3 className="text-lg font-bold text-amber-600 dark:text-amber-400">Important: Activate Your Code</h3>
-                  <AlertTriangle className="w-6 h-6 text-amber-500 animate-bounce" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+                  <AlertTriangle className="w-7 h-7 text-red-500 animate-bounce" style={{ animationDuration: '1.5s' }} />
+                  <h3 className="text-xl font-bold text-red-500">⚠️ ACTIVATION REQUIRED ⚠️</h3>
+                  <AlertTriangle className="w-7 h-7 text-red-500 animate-bounce" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} />
                 </div>
                 
-                <p className="text-sm text-foreground font-medium leading-relaxed">
-                  ⚠️ <span className="text-amber-600 dark:text-amber-400 font-semibold">Kindly activate your RPC code before use.</span> Your code will not work until it has been activated on the activation portal.
-                </p>
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-2">
+                  <p className="text-base text-foreground font-bold text-center leading-relaxed">
+                    🚫 Your RPC code will <span className="text-red-500 underline">NOT WORK</span> until activated!
+                  </p>
+                  <p className="text-sm text-muted-foreground text-center">
+                    You <span className="text-amber-500 font-semibold">won't be credited</span> and <span className="text-amber-500 font-semibold">cannot withdraw</span> until your code is activated on our portal.
+                  </p>
+                </div>
 
                 <Button 
                   onClick={() => window.open(activationLink, '_blank')}
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg shadow-amber-500/30 border-0" 
+                  className="w-full bg-gradient-to-r from-red-500 via-amber-500 to-red-500 hover:from-red-600 hover:via-amber-600 hover:to-red-600 text-white font-bold text-lg shadow-xl shadow-red-500/40 border-0 animate-pulse py-6" 
+                  style={{ animationDuration: '2s' }}
                   size="lg"
                 >
-                  <ExternalLink className="w-5 h-5 mr-2" />
-                  Tap Here to Activate Your Code
+                  <ExternalLink className="w-6 h-6 mr-2" />
+                  🔓 TAP HERE TO ACTIVATE NOW
                 </Button>
                 
-                <p className="text-xs text-muted-foreground text-center">
-                  Click the button above to open the activation page in a new tab
+                <p className="text-xs text-red-400 text-center font-medium">
+                  ⏰ Activate immediately to start earning!
                 </p>
               </div>
             </div>
