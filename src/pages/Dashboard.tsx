@@ -281,7 +281,7 @@ const Dashboard = () => {
 
   const handleLogout = useCallback(async () => {
     await signOut();
-    navigate("/");
+    navigate("/auth", { replace: true });
   }, [signOut, navigate]);
 
   const actionButtons = useMemo(() => [
