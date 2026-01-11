@@ -79,33 +79,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch valid access code from private_settings table (secure admin-only table)
-    const { data: settingData, error: settingError } = await supabase
-      .from('private_settings')
-      .select('value')
-      .eq('key', 'rpc_access_code')
-      .single();
+    // Note: RPC code validation is now done against the user's personal RPC code after fetching their profile
 
-    if (settingError || !settingData) {
-      console.error('Failed to fetch RPC access code from private_settings:', settingError);
-      return new Response(
-        JSON.stringify({ error: 'System configuration error', success: false }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const validAccessCode = settingData.value;
-
-    // SERVER-SIDE ACCESS CODE VALIDATION - Most critical security check
-    if (access_code !== validAccessCode) {
-      console.error('Invalid access code attempt for user:', user_id);
-      return new Response(
-        JSON.stringify({ error: 'Invalid access code', success: false, redirect: '/buy-rpc' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get user profile with balance
+    // Get user profile with balance and RPC code
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -116,6 +92,16 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User not found', success: false }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate user's personal RPC code - this is the primary validation
+    const userRpcCode = user.rpc_code;
+    if (!userRpcCode || access_code !== userRpcCode) {
+      console.error('Invalid access code attempt for user:', user_id, '- Expected:', userRpcCode, 'Got:', access_code);
+      return new Response(
+        JSON.stringify({ error: 'Invalid access code', success: false, redirect: '/buy-rpc' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
