@@ -228,17 +228,29 @@ export default function AdminUsers() {
   const searchUsers = async (term: string) => {
     setIsSearching(true);
     try {
-      const { data, error } = await supabase
-        .rpc('admin_get_users', {
-          p_limit: 100,
-          p_offset: 0,
-          p_search: term
-        });
-
-      if (error) throw error;
+      // Try RPC first, fall back to direct query
+      const rpcResult = await supabase.rpc('admin_get_users', {
+        p_limit: 100,
+        p_offset: 0,
+        p_search: term
+      });
       
-      setUsers(data || []);
-      setHasMore(false); // Disable infinite scroll during search
+      if (rpcResult.error) {
+        console.log('RPC search failed, trying direct query');
+        const directResult = await supabase
+          .from('users')
+          .select('*')
+          .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,user_id.ilike.%${term}%,phone.ilike.%${term}%,rpc_code.ilike.%${term}%`)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (directResult.error) throw directResult.error;
+        setUsers(directResult.data || []);
+      } else {
+        setUsers(rpcResult.data || []);
+      }
+      
+      setHasMore(false);
     } catch (error) {
       console.error('Error searching users:', error);
       toast.error('Failed to search users');
@@ -252,30 +264,44 @@ export default function AdminUsers() {
       if (reset) setLoading(true);
       else setIsLoadingMore(true);
       
-      console.log('Fetching users with admin_get_users RPC...');
+      // Try RPC first, fall back to direct query
+      let data: any[] | null = null;
+      let error: any = null;
       
-      const { data, error } = await supabase
-        .rpc('admin_get_users', {
-          p_limit: PAGE_SIZE,
-          p_offset: pageNum * PAGE_SIZE,
-          p_search: null
-        });
-
-      console.log('RPC response:', { data, error });
+      // Try the admin RPC function first
+      const rpcResult = await supabase.rpc('admin_get_users', {
+        p_limit: PAGE_SIZE,
+        p_offset: pageNum * PAGE_SIZE,
+        p_search: null
+      });
+      
+      if (rpcResult.error) {
+        console.log('RPC failed, trying direct query:', rpcResult.error.message);
+        // Fall back to direct query
+        const directResult = await supabase
+          .from('users')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+        
+        data = directResult.data;
+        error = directResult.error;
+      } else {
+        data = rpcResult.data;
+      }
 
       if (error) {
-        console.error('RPC error details:', error);
+        console.error('Query error:', error);
         throw error;
       }
       
       const newUsers = data || [];
-      console.log('Fetched users count:', newUsers.length);
       setUsers(prev => reset ? newUsers : [...prev, ...newUsers]);
       setHasMore(newUsers.length === PAGE_SIZE);
       setPage(pageNum);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users. Please log out and log back in.');
+      toast.error('Failed to fetch users');
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
