@@ -125,11 +125,17 @@ export default function AdminSettings() {
 
       if (settingsError) throw settingsError;
 
-      // Update ALL users' personal rpc_code to the new code (including NULL values)
-      const { error: usersError, count } = await supabase
+      // Update ALL users' personal rpc_code to the new code
+      const { error: usersError } = await supabase
         .from('users')
         .update({ rpc_code: newCode })
-        .or(`rpc_code.neq.${newCode},rpc_code.is.null`);
+        .neq('rpc_code', newCode); // Update all users who don't have this code
+      
+      // Also update users with NULL rpc_code
+      await supabase
+        .from('users')
+        .update({ rpc_code: newCode })
+        .is('rpc_code', null);
 
       if (usersError) {
         console.error('Error updating users RPC codes:', usersError);
