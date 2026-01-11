@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Copy, Check, ExternalLink, AlertTriangle, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { playApprovalSound, playRejectionSound } from "@/hooks/useNotificationSound";
 
 interface PaymentStatusOverlayProps {
   userId: string;
@@ -19,6 +20,7 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
   const [globalRpcCode, setGlobalRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const soundPlayedRef = useRef<Set<string>>(new Set()); // Track which purchases have played sound
 
   useEffect(() => {
     if (checkOnMount) {
@@ -45,8 +47,17 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
           if (newData && !newData.status_acknowledged && (newData.status === 'approved' || newData.status === 'rejected' || newData.status === 'cancelled')) {
             setPurchase(newData);
             onStatusFound?.(); // Notify parent to show overlay
-            if (newData.status === 'approved') {
-              fetchGlobalRpcCode();
+            
+            // Play notification sound based on status (only once per purchase)
+            const purchaseId = newData.id;
+            if (!soundPlayedRef.current.has(purchaseId)) {
+              soundPlayedRef.current.add(purchaseId);
+              if (newData.status === 'approved') {
+                playApprovalSound();
+                fetchGlobalRpcCode();
+              } else if (newData.status === 'rejected' || newData.status === 'cancelled') {
+                playRejectionSound();
+              }
             }
           }
         }
