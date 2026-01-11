@@ -118,12 +118,14 @@ export default function AdminSettings() {
     try {
       const newCode = rpcAccessCode.trim();
       
-      // Save to private_settings (admin-only table)
-      const { error: settingsError } = await supabase
+      // Save to private_settings (admin-only table) - update both keys for consistency
+      await supabase
         .from('private_settings')
         .upsert({ key: 'rpc_access_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-
-      if (settingsError) throw settingsError;
+      
+      await supabase
+        .from('private_settings')
+        .upsert({ key: 'rpc_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
       // Update ALL users' personal rpc_code to the new code
       const { error: usersError } = await supabase
