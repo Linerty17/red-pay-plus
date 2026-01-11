@@ -652,6 +652,40 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_referrals: {
+        Args: { p_limit?: number; p_offset?: number; p_status?: string }
+        Returns: {
+          amount_given: number
+          created_at: string
+          id: string
+          manual_credit_notes: string
+          new_user_email: string
+          new_user_id: string
+          referrer_email: string
+          referrer_id: string
+          status: string
+        }[]
+      }
+      admin_get_users: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: {
+          balance: number
+          ban_reason: string
+          country: string
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          referral_code: string
+          referral_count: number
+          rpc_code: string
+          rpc_purchased: boolean
+          status: string
+          user_id: string
+        }[]
+      }
       confirm_referral: {
         Args: { _amount?: number; _new_user_id: string }
         Returns: Json
