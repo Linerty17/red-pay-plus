@@ -215,11 +215,14 @@ export default function AdminUsers() {
 
   // Fetch users when search term changes
   useEffect(() => {
-    if (debouncedSearchTerm) {
-      searchUsers(debouncedSearchTerm);
-    } else {
-      fetchUsers(0, true);
-    }
+    const handleSearch = async () => {
+      if (debouncedSearchTerm && debouncedSearchTerm.trim().length > 0) {
+        await searchUsers(debouncedSearchTerm.trim());
+      } else if (debouncedSearchTerm === '') {
+        await fetchUsers(0, true);
+      }
+    };
+    handleSearch();
   }, [debouncedSearchTerm]);
 
   const searchUsers = async (term: string) => {
