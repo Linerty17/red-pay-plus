@@ -174,26 +174,72 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [referralValidation, setReferralValidation] = useState<{
+    isValidating: boolean;
+    isValid: boolean | null;
+    message: string | null;
+  }>({ isValidating: false, isValid: null, message: null });
   const [activeTab, setActiveTab] = useState("signup");
+
+  // Validate referral code with debounce
+  const validateReferralCode = async (code: string) => {
+    if (!code.trim()) {
+      setReferralValidation({ isValidating: false, isValid: null, message: null });
+      setReferrerName(null);
+      return;
+    }
+
+    setReferralValidation({ isValidating: true, isValid: null, message: null });
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('first_name, last_name')
+        .eq('referral_code', code.trim())
+        .maybeSingle();
+
+      if (error) {
+        setReferralValidation({ isValidating: false, isValid: false, message: 'Error checking code' });
+        setReferrerName(null);
+        return;
+      }
+
+      if (data) {
+        const name = `${data.first_name} ${data.last_name}`;
+        setReferrerName(name);
+        setReferralValidation({ 
+          isValidating: false, 
+          isValid: true, 
+          message: `Referred by ${name}` 
+        });
+      } else {
+        setReferrerName(null);
+        setReferralValidation({ 
+          isValidating: false, 
+          isValid: false, 
+          message: 'Invalid referral code' 
+        });
+      }
+    } catch {
+      setReferralValidation({ isValidating: false, isValid: false, message: 'Error checking code' });
+      setReferrerName(null);
+    }
+  };
+
+  // Debounced referral code validation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      validateReferralCode(referralCode);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [referralCode]);
 
   useEffect(() => {
     // Get referral code from URL
     const ref = searchParams.get("ref");
     if (ref) {
       setReferralCode(ref);
-      // Fetch referrer name
-      const fetchReferrer = async () => {
-        const { data } = await supabase
-          .from('users')
-          .select('first_name, last_name')
-          .eq('referral_code', ref)
-          .single();
-        
-        if (data) {
-          setReferrerName(`${data.first_name} ${data.last_name}`);
-        }
-      };
-      fetchReferrer();
     }
   }, [searchParams]);
 
@@ -437,17 +483,50 @@ const Auth = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="refCode">Referral Code (Optional)</Label>
-                    <Input
-                      id="refCode"
-                      name="refCode"
-                      value={referralCode}
-                      onChange={(e) => setReferralCode(e.target.value)}
-                      placeholder="Enter code"
-                      className="bg-input border-border"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Have a referral code? Add it to earn rewards.
-                    </p>
+                    <div className="relative">
+                      <Input
+                        id="refCode"
+                        name="refCode"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value)}
+                        placeholder="Enter code"
+                        className={`bg-input border-border pr-10 ${
+                          referralValidation.isValid === true 
+                            ? 'border-green-500 focus-visible:ring-green-500' 
+                            : referralValidation.isValid === false 
+                              ? 'border-destructive focus-visible:ring-destructive' 
+                              : ''
+                        }`}
+                      />
+                      {referralCode && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {referralValidation.isValidating ? (
+                            <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                          ) : referralValidation.isValid === true ? (
+                            <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : referralValidation.isValid === false ? (
+                            <svg className="w-4 h-4 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    {referralValidation.message ? (
+                      <p className={`text-xs ${
+                        referralValidation.isValid 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-destructive'
+                      }`}>
+                        {referralValidation.message}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Have a referral code? Add it to earn rewards.
+                      </p>
+                    )}
                   </div>
 
                   <Button
