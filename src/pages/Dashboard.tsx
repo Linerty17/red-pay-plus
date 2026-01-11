@@ -61,7 +61,11 @@ const Dashboard = () => {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [showTelegramBanner, setShowTelegramBanner] = useState(true);
+const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
+    // Check if user has opted out of seeing this banner
+    const neverShowAgain = localStorage.getItem('hideCommunityPopup');
+    return neverShowAgain !== 'true';
+  });
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
   const [showPaymentStatus, setShowPaymentStatus] = useState(true);
@@ -387,43 +391,110 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Telegram Notification Overlay */}
+      {/* Premium Community Popup */}
       {showTelegramBanner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md animate-fade-in">
-          <Card className="mx-4 max-w-sm w-full bg-card/95 border-primary/30 shadow-2xl rounded-3xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-            <CardContent className="relative p-8 text-center space-y-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center mx-auto shadow-lg animate-float">
-                <MessageCircle className="w-10 h-10 text-primary-foreground" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="mx-4 max-w-sm w-full relative">
+            {/* Animated glow effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-3xl blur-lg opacity-75 animate-pulse" />
+            
+            <Card className="relative bg-gradient-to-br from-card via-card to-card/95 border-0 shadow-2xl rounded-3xl overflow-hidden">
+              {/* Decorative background elements */}
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-primary/30 to-transparent rounded-full blur-3xl" />
+                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-purple-500/30 to-transparent rounded-full blur-3xl" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-gradient-to-br from-pink-500/10 to-transparent rounded-full blur-3xl" />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-bold text-foreground">Join Our Community</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Get exclusive updates, bonuses, and announcements directly on Telegram!
-                </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <a
-                  href={TELEGRAM_CHANNEL_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full"
-                >
-                  <Button className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 text-primary-foreground font-semibold shadow-lg">
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    Join Telegram Channel
-                  </Button>
-                </a>
-                <Button
-                  variant="ghost"
-                  className="w-full text-muted-foreground hover:text-foreground rounded-xl"
+              
+              <CardContent className="relative p-6 pt-8 text-center space-y-5">
+                {/* Close button */}
+                <button 
                   onClick={() => setShowTelegramBanner(false)}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
                 >
-                  Maybe Later
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+
+                {/* Animated icon with rings */}
+                <div className="relative mx-auto w-24 h-24">
+                  {/* Outer animated ring */}
+                  <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
+                  {/* Middle ring */}
+                  <div className="absolute inset-2 rounded-full border-2 border-primary/50 animate-pulse" />
+                  {/* Icon container */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl transform rotate-3 hover:rotate-0 transition-transform">
+                      <Send className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  {/* Sparkle decorations */}
+                  <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-pulse" />
+                  <Sparkles className="absolute -bottom-1 -left-1 w-4 h-4 text-purple-400 animate-pulse delay-100" />
+                </div>
+
+                {/* Content */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-foreground via-primary to-purple-500 bg-clip-text text-transparent">
+                      Join Our Community
+                    </h3>
+                    <BadgeCheck className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Be part of <span className="text-primary font-semibold">50,000+</span> members! Get exclusive bonuses, updates & earn more rewards.
+                  </p>
+                </div>
+
+                {/* Benefits pills */}
+                <div className="flex flex-wrap justify-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
+                    <Gift className="w-3 h-3" /> Exclusive Bonuses
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-500 text-xs font-medium flex items-center gap-1">
+                    <Zap className="w-3 h-3" /> Fast Updates
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-medium flex items-center gap-1">
+                    <Shield className="w-3 h-3" /> Safe & Trusted
+                  </span>
+                </div>
+
+                {/* Action buttons */}
+                <div className="space-y-3 pt-2">
+                  <a
+                    href={TELEGRAM_CHANNEL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Button className="w-full h-12 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:opacity-90 text-white font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]">
+                      <Send className="w-5 h-5 mr-2" />
+                      Join Telegram Now
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </a>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl h-10"
+                      onClick={() => setShowTelegramBanner(false)}
+                    >
+                      Remind Me Later
+                    </Button>
+                    <button
+                      className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors underline-offset-2 hover:underline"
+                      onClick={() => {
+                        localStorage.setItem('hideCommunityPopup', 'true');
+                        setShowTelegramBanner(false);
+                      }}
+                    >
+                      Never show again
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
