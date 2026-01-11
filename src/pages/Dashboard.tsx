@@ -70,6 +70,7 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
   const [showPaymentStatus, setShowPaymentStatus] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showCommunityConfetti, setShowCommunityConfetti] = useState(false);
 
   // Initialize notifications hook
   useNotifications(profile?.user_id);
@@ -365,6 +366,12 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
         isActive={showConfetti} 
         onComplete={() => setShowConfetti(false)} 
       />
+      
+      {/* Community Join Confetti */}
+      <ConfettiCelebration 
+        isActive={showCommunityConfetti} 
+        onComplete={() => setShowCommunityConfetti(false)} 
+      />
 
       {/* Payment Status Overlay - Full Screen */}
       {profile?.user_id && showPaymentStatus && (
@@ -460,18 +467,20 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
 
                 {/* Action buttons */}
                 <div className="space-y-3 pt-2">
-                  <a
-                    href={TELEGRAM_CHANNEL_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
+                  <Button 
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:opacity-90 text-white font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={() => {
+                      setShowCommunityConfetti(true);
+                      // Small delay before opening link for confetti effect
+                      setTimeout(() => {
+                        window.open(TELEGRAM_CHANNEL_URL, '_blank');
+                      }, 300);
+                    }}
                   >
-                    <Button className="w-full h-12 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 hover:opacity-90 text-white font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-primary/40 hover:scale-[1.02] active:scale-[0.98]">
-                      <Send className="w-5 h-5 mr-2" />
-                      Join Telegram Now
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </a>
+                    <Send className="w-5 h-5 mr-2" />
+                    Join Telegram Now
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
                   
                   <div className="flex flex-col gap-2">
                     <Button
