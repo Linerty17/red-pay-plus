@@ -229,11 +229,11 @@ export default function AdminUsers() {
     setIsSearching(true);
     try {
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,user_id.ilike.%${term}%,phone.ilike.%${term}%,rpc_code.ilike.%${term}%`)
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .rpc('admin_get_users', {
+          p_limit: 100,
+          p_offset: 0,
+          p_search: term
+        });
 
       if (error) throw error;
       
@@ -253,10 +253,11 @@ export default function AdminUsers() {
       else setIsLoadingMore(true);
       
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+        .rpc('admin_get_users', {
+          p_limit: PAGE_SIZE,
+          p_offset: pageNum * PAGE_SIZE,
+          p_search: null
+        });
 
       if (error) throw error;
       
