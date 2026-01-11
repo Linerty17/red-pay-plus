@@ -8,7 +8,8 @@ import {
   FileText,
   LogOut,
   Settings,
-  ShieldX
+  ShieldX,
+  CheckCircle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -152,6 +153,7 @@ export function AdminSidebar() {
     { title: 'Banned Pending', url: '/ifechukwu/banned-pending', icon: ShieldX, badge: bannedPendingCount, badgeVariant: 'destructive' },
     { title: 'Referrals', url: '/ifechukwu/referrals', icon: Users },
     { title: 'Payments', url: '/ifechukwu/payments', icon: CreditCard, highlight: true, badge: pendingCount },
+    { title: 'Approved RPC', url: '/ifechukwu/approved-rpc', icon: CheckCircle },
     { title: 'Transactions', url: '/ifechukwu/transactions', icon: Receipt },
     { title: 'Send Push', url: '/ifechukwu/push', icon: Bell },
     { title: 'Notification Stats', url: '/ifechukwu/notifications', icon: Bell },
