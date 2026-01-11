@@ -382,7 +382,7 @@ const Dashboard = () => {
         <PaymentStatusOverlay 
           userId={profile.user_id}
           onClose={() => setShowPaymentStatus(false)}
-          checkOnMount={showPaymentStatus} // Only check on mount if navigated with state
+          checkOnMount={true} // Always check for unacknowledged payments on mount
           onStatusFound={() => setShowPaymentStatus(true)} // Show overlay on realtime update
         />
       )}
