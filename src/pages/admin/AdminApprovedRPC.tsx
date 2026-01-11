@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Search, ShieldX, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Search, ShieldX, Loader2, CheckCircle, AlertTriangle, XCircle, Mail } from 'lucide-react';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { format } from 'date-fns';
 
@@ -22,6 +22,54 @@ interface ApprovedPurchase {
   created_at: string;
 }
 
+// Fullscreen revoke animation component
+const RevokeAnimation = ({ userName, onComplete }: { userName: string; onComplete: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onComplete, 3000);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate-fade-in">
+      <div className="text-center space-y-6">
+        {/* Animated X circle */}
+        <div className="relative mx-auto w-32 h-32">
+          <div className="absolute inset-0 rounded-full border-4 border-red-500 animate-ping opacity-30" />
+          <div className="absolute inset-0 rounded-full border-4 border-red-500 animate-pulse" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <XCircle className="w-20 h-20 text-red-500 animate-scale-in" />
+          </div>
+        </div>
+        
+        {/* Text */}
+        <div className="space-y-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <h2 className="text-3xl font-bold text-white">RPC Code Revoked</h2>
+          <p className="text-xl text-red-400">{userName}</p>
+        </div>
+        
+        {/* Email notification indicator */}
+        <div className="flex items-center justify-center gap-2 text-green-400 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+          <Mail className="w-5 h-5" />
+          <span>Email notification sent</span>
+        </div>
+        
+        {/* Loading bar */}
+        <div className="w-64 h-1 bg-gray-700 rounded-full mx-auto overflow-hidden">
+          <div className="h-full bg-red-500 rounded-full animate-[progress_3s_linear]" 
+               style={{ animation: 'progress 3s linear forwards' }} />
+        </div>
+      </div>
+      
+      <style>{`
+        @keyframes progress {
+          from { width: 0%; }
+          to { width: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 export default function AdminApprovedRPC() {
   const { user: adminUser } = useAdminAuth();
   const [purchases, setPurchases] = useState<ApprovedPurchase[]>([]);
@@ -33,6 +81,8 @@ export default function AdminApprovedRPC() {
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [purchaseToRevoke, setPurchaseToRevoke] = useState<ApprovedPurchase | null>(null);
   const [revoking, setRevoking] = useState(false);
+  const [showRevokeAnimation, setShowRevokeAnimation] = useState(false);
+  const [revokedUserName, setRevokedUserName] = useState('');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -174,6 +224,43 @@ export default function AdminApprovedRPC() {
     setRevokeDialogOpen(true);
   };
 
+  const sendRevokeEmail = async (email: string, userName: string, rpcCode: string | null) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      await supabase.functions.invoke('send-email', {
+        body: {
+          email,
+          subject: 'RPC Code Revoked - RedPay',
+          message: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">RPC Code Revoked</h1>
+              </div>
+              <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p style="color: #374151; font-size: 16px;">Dear <strong>${userName}</strong>,</p>
+                <p style="color: #374151; font-size: 16px;">We regret to inform you that your RPC code has been revoked.</p>
+                ${rpcCode ? `<p style="color: #6b7280; font-size: 14px;">Revoked Code: <code style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; color: #dc2626;">${rpcCode}</code></p>` : ''}
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                  <p style="color: #991b1b; margin: 0; font-size: 14px;">
+                    <strong>What this means:</strong><br/>
+                    Your RPC purchase has been cancelled. If you believe this was done in error, please contact our support team immediately.
+                  </p>
+                </div>
+                <p style="color: #374151; font-size: 16px;">If you wish to purchase RPC again, please visit our app and submit a new payment.</p>
+                <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Best regards,<br/><strong>RedPay Team</strong></p>
+              </div>
+            </div>
+          `
+        }
+      });
+      console.log('Revoke email sent to:', email);
+    } catch (err) {
+      console.error('Failed to send revoke email:', err);
+    }
+  };
+
   const handleRevoke = async () => {
     if (!purchaseToRevoke) return;
     setRevoking(true);
@@ -214,12 +301,21 @@ export default function AdminApprovedRPC() {
         });
       }
 
+      // Send email notification
+      await sendRevokeEmail(
+        purchaseToRevoke.email, 
+        purchaseToRevoke.user_name, 
+        purchaseToRevoke.rpc_code_issued
+      );
+
       // Remove from local state
       setPurchases(prev => prev.filter(p => p.id !== purchaseToRevoke.id));
       setTotalCount(prev => prev - 1);
       
-      toast.success(`RPC code revoked from ${purchaseToRevoke.user_name}`);
+      // Show fullscreen animation
+      setRevokedUserName(purchaseToRevoke.user_name);
       setRevokeDialogOpen(false);
+      setShowRevokeAnimation(true);
     } catch (err: any) {
       toast.error('Failed to revoke RPC: ' + err.message);
     } finally {
@@ -237,7 +333,19 @@ export default function AdminApprovedRPC() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Fullscreen Revoke Animation */}
+      {showRevokeAnimation && (
+        <RevokeAnimation 
+          userName={revokedUserName} 
+          onComplete={() => {
+            setShowRevokeAnimation(false);
+            toast.success('RPC code revoked and email notification sent');
+          }} 
+        />
+      )}
+
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -386,6 +494,7 @@ export default function AdminApprovedRPC() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
