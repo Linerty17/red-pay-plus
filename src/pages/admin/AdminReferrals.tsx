@@ -59,20 +59,59 @@ export default function AdminReferrals() {
       if (reset) setLoading(true);
       else setIsLoadingMore(true);
 
-      const { data, error } = await supabase
-        .rpc('admin_get_referrals', {
-          p_limit: PAGE_SIZE,
-          p_offset: pageNum * PAGE_SIZE,
-          p_status: statusFilter === 'all' ? null : statusFilter
-        });
+      let formatted: Referral[] = [];
 
-      if (error) throw error;
+      // Try RPC first
+      const rpcResult = await supabase.rpc('admin_get_referrals', {
+        p_limit: PAGE_SIZE,
+        p_offset: pageNum * PAGE_SIZE,
+        p_status: statusFilter === 'all' ? null : statusFilter
+      });
 
-      const formatted = (data || []).map((ref: any) => ({
-        ...ref,
-        referrer_email: ref.referrer_email || 'Unknown',
-        new_user_email: ref.new_user_email || 'Unknown',
-      }));
+      if (rpcResult.error) {
+        console.log('RPC failed, trying direct query:', rpcResult.error.message);
+        
+        // Fall back to direct query
+        let query = supabase
+          .from('referrals')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
+
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // Fetch user emails
+        const referrerIds = [...new Set((data || []).map(r => r.referrer_id))];
+        const newUserIds = [...new Set((data || []).map(r => r.new_user_id))];
+        const allUserIds = [...new Set([...referrerIds, ...newUserIds])];
+        
+        let emailMap = new Map<string, string>();
+        if (allUserIds.length > 0) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('user_id, email')
+            .in('user_id', allUserIds);
+          
+          emailMap = new Map(usersData?.map(u => [u.user_id, u.email]) || []);
+        }
+
+        formatted = (data || []).map((ref: any) => ({
+          ...ref,
+          referrer_email: emailMap.get(ref.referrer_id) || 'Unknown',
+          new_user_email: emailMap.get(ref.new_user_id) || 'Unknown',
+        }));
+      } else {
+        formatted = (rpcResult.data || []).map((ref: any) => ({
+          ...ref,
+          referrer_email: ref.referrer_email || 'Unknown',
+          new_user_email: ref.new_user_email || 'Unknown',
+        }));
+      }
 
       setReferrals(prev => reset ? formatted : [...prev, ...formatted]);
       setHasMore(formatted.length === PAGE_SIZE);
