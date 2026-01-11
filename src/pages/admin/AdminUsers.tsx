@@ -134,6 +134,44 @@ export default function AdminUsers() {
   useEffect(() => {
     fetchUsers(0);
     fetchTotalCount();
+
+    // Real-time subscription for new users
+    const channel = supabase
+      .channel('admin-users-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          const newUser = payload.new as User;
+          setUsers(prev => {
+            if (prev.some(u => u.id === newUser.id)) return prev;
+            return [newUser, ...prev];
+          });
+          setTotalCount(prev => prev + 1);
+          toast.success(`New user registered: ${newUser.first_name} ${newUser.last_name}`);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users'
+        },
+        (payload) => {
+          const updatedUser = payload.new as User;
+          setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchUsers, fetchTotalCount]);
 
   const loadMore = () => {

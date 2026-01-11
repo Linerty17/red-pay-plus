@@ -39,6 +39,7 @@ import AdminAudit from "./pages/admin/AdminAudit";
 import AdminSettingsProtected from "./pages/admin/AdminSettingsProtected";
 import AdminBannedUsers from "./pages/admin/AdminBannedUsers";
 import AdminBannedPending from "./pages/admin/AdminBannedPending";
+import AdminApprovedRPC from "./pages/admin/AdminApprovedRPC";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => {
                   <Route path="settings" element={<AdminSettingsProtected />} />
                   <Route path="banned-users" element={<AdminBannedUsers />} />
                   <Route path="banned-pending" element={<AdminBannedPending />} />
+                  <Route path="approved-rpc" element={<AdminApprovedRPC />} />
                 </Route>
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
