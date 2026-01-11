@@ -157,8 +157,13 @@ export default function AdminPayments() {
 
   // Use React Query for counts and RPC code
   const { data: counts = { total: 0, pending: 0, approved: 0, rejected: 0, cancelled: 0 }, isLoading: countsLoading } = usePaymentCounts();
-  const { data: globalRpcCode = 'RPC2000122' } = useGlobalRpcCode();
-  const { invalidatePayments, invalidateStats } = useInvalidateAdminData();
+  const { data: globalRpcCode, isLoading: rpcLoading, refetch: refetchRpcCode } = useGlobalRpcCode();
+  const { invalidatePayments, invalidateStats, invalidateRpcCode } = useInvalidateAdminData();
+  
+  // Refetch RPC code on mount to ensure it's always fresh
+  useEffect(() => {
+    refetchRpcCode();
+  }, [refetchRpcCode]);
 
   useEffect(() => {
     fetchPayments(0, true);
@@ -442,7 +447,9 @@ export default function AdminPayments() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Payment Verification</h1>
-        <p className="text-muted-foreground">Review and approve RPC purchases (RPC Code: {globalRpcCode})</p>
+        <p className="text-muted-foreground">
+          Review and approve RPC purchases (RPC Code: {rpcLoading ? 'Loading...' : (globalRpcCode || 'Not set')})
+        </p>
       </div>
 
       {/* Stats Cards */}
