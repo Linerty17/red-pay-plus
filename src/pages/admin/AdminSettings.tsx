@@ -113,14 +113,27 @@ export default function AdminSettings() {
 
     setSavingRpc(true);
     try {
+      const newCode = rpcAccessCode.trim();
+      
       // Save to private_settings (admin-only table)
-      const { error } = await supabase
+      const { error: settingsError } = await supabase
         .from('private_settings')
-        .upsert({ key: 'rpc_access_code', value: rpcAccessCode.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        .upsert({ key: 'rpc_access_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
-      if (error) throw error;
+      if (settingsError) throw settingsError;
 
-      toast.success('RPC access code updated successfully');
+      // Update all users' personal rpc_code to the new code
+      const { error: usersError } = await supabase
+        .from('users')
+        .update({ rpc_code: newCode })
+        .neq('rpc_code', newCode); // Only update users who don't already have this code
+
+      if (usersError) {
+        console.error('Error updating users RPC codes:', usersError);
+        toast.error('Code saved but failed to update some users');
+      } else {
+        toast.success('RPC access code updated for all users');
+      }
     } catch (error) {
       console.error('Error saving RPC access code:', error);
       toast.error('Failed to save RPC access code');
