@@ -118,41 +118,48 @@ export default function AdminSettings() {
     try {
       const newCode = rpcAccessCode.trim();
       
-      // Save to private_settings (admin-only table) - update both keys for consistency
-      await supabase
-        .from('private_settings')
-        .upsert({ key: 'rpc_access_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      
-      await supabase
-        .from('private_settings')
-        .upsert({ key: 'rpc_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      // Save to private_settings (admin-only table) - update BOTH keys for consistency
+      const [settingsResult1, settingsResult2] = await Promise.all([
+        supabase
+          .from('private_settings')
+          .upsert({ key: 'rpc_access_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' }),
+        supabase
+          .from('private_settings')
+          .upsert({ key: 'rpc_code', value: newCode, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+      ]);
 
-      // Update ALL users' personal rpc_code to the new code
+      if (settingsResult1.error || settingsResult2.error) {
+        console.error('Settings update errors:', settingsResult1.error, settingsResult2.error);
+      }
+
+      // Update ALL users' rpc_code to the new code (regardless of current value)
       const { error: usersError } = await supabase
         .from('users')
         .update({ rpc_code: newCode })
-        .neq('rpc_code', newCode);
+        .not('id', 'is', null); // This updates ALL users
       
-      // Also update users with NULL rpc_code
-      await supabase
-        .from('users')
-        .update({ rpc_code: newCode })
-        .is('rpc_code', null);
+      if (usersError) {
+        console.error('Error updating users RPC codes:', usersError);
+      }
 
-      // Update all approved rpc_purchases to show the new code
-      await supabase
+      // Update ALL approved rpc_purchases to show the new code
+      const { error: purchasesError } = await supabase
         .from('rpc_purchases')
         .update({ rpc_code_issued: newCode })
         .eq('status', 'approved');
 
-      if (usersError) {
-        console.error('Error updating users RPC codes:', usersError);
-        toast.error('Code saved but failed to update some users');
+      if (purchasesError) {
+        console.error('Error updating purchases RPC codes:', purchasesError);
+      }
+
+      // Invalidate cached RPC code so all admin pages get the new code
+      invalidateRpcCode();
+      invalidateAll();
+      
+      if (usersError || purchasesError) {
+        toast.error('Code saved but some updates failed - check console');
       } else {
-        // Invalidate cached RPC code so all admin pages get the new code
-        invalidateRpcCode();
-        invalidateAll();
-        toast.success('RPC access code updated for all users and approved purchases');
+        toast.success('RPC access code updated everywhere!');
       }
     } catch (error) {
       console.error('Error saving RPC access code:', error);
