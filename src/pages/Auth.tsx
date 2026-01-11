@@ -252,6 +252,17 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Block submission if referral code is invalid or still validating
+    if (referralCode.trim() && (referralValidation.isValidating || referralValidation.isValid === false)) {
+      if (referralValidation.isValidating) {
+        toast.error("Please wait while we verify the referral code");
+      } else {
+        toast.error("Please enter a valid referral code or clear the field");
+      }
+      return;
+    }
+
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
