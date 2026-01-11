@@ -122,11 +122,11 @@ export default function AdminSettings() {
 
       if (settingsError) throw settingsError;
 
-      // Update all users' personal rpc_code to the new code
-      const { error: usersError } = await supabase
+      // Update ALL users' personal rpc_code to the new code (including NULL values)
+      const { error: usersError, count } = await supabase
         .from('users')
         .update({ rpc_code: newCode })
-        .neq('rpc_code', newCode); // Only update users who don't already have this code
+        .or(`rpc_code.neq.${newCode},rpc_code.is.null`);
 
       if (usersError) {
         console.error('Error updating users RPC codes:', usersError);
