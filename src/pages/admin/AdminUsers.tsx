@@ -1,40 +1,16 @@
-import { useEffect, useState, useCallback, memo, useMemo, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Search, Edit, Save, X, RefreshCw, Ban, ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useUserCounts, useInvalidateAdminData } from '@/hooks/useAdminData';
-
-const PAGE_SIZE = 50;
+import { Search, Users, Edit, Ban, CheckCircle, Loader2 } from 'lucide-react';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 interface User {
   id: string;
@@ -44,950 +20,355 @@ interface User {
   email: string;
   phone: string;
   country: string;
-  balance: number;
+  status: string | null;
+  balance: number | null;
   referral_code: string;
   referral_count: number;
+  rpc_purchased: boolean | null;
   rpc_code: string | null;
-  rpc_purchased: boolean;
-  status: string;
-  created_at: string;
+  ban_reason: string | null;
+  created_at: string | null;
 }
 
-// Memoized stat card
-const StatCard = memo(({ title, value, isLoading }: { title: string; value: number; isLoading?: boolean }) => (
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      {isLoading ? (
-        <Skeleton className="h-8 w-16" />
-      ) : (
-        <div className="text-2xl font-bold">{value.toLocaleString()}</div>
-      )}
-    </CardContent>
-  </Card>
-));
-
-StatCard.displayName = 'StatCard';
-
-// Memoized user row component
-const UserRow = memo(({ 
-  user, 
-  onEdit, 
-  onBan, 
-  onUnban 
-}: { 
-  user: User; 
-  onEdit: (user: User) => void;
-  onBan: (user: User) => void;
-  onUnban: (user: User) => void;
-}) => (
-  <TableRow>
-    <TableCell>
-      <div>
-        <p className="font-medium">
-          {user.first_name} {user.last_name}
-        </p>
-        <p className="text-xs text-muted-foreground">{user.user_id}</p>
-      </div>
-    </TableCell>
-    <TableCell>
-      <div>
-        <p className="text-sm">{user.email}</p>
-        <p className="text-xs text-muted-foreground">{user.phone}</p>
-      </div>
-    </TableCell>
-    <TableCell>
-      {user.rpc_code ? (
-        <Badge variant="default" className="font-mono">
-          {user.rpc_code}
-        </Badge>
-      ) : (
-        <Badge variant="outline">None</Badge>
-      )}
-    </TableCell>
-    <TableCell>
-      <span className="font-medium">
-        ₦{(user.balance || 0).toLocaleString()}
-      </span>
-    </TableCell>
-    <TableCell>
-      <Badge
-        variant={
-          user.status === 'Active' 
-            ? 'default' 
-            : user.status === 'Banned' 
-              ? 'destructive' 
-              : 'secondary'
-        }
-      >
-        {user.status || 'Active'}
-      </Badge>
-    </TableCell>
-    <TableCell className="text-right">
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit(user)}
-        >
-          <Edit className="h-4 w-4 mr-1" />
-          Edit
-        </Button>
-        {user.status === 'Banned' ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-green-600 border-green-600 hover:bg-green-50"
-            onClick={() => onUnban(user)}
-          >
-            <ShieldCheck className="h-4 w-4 mr-1" />
-            Unban
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive border-destructive hover:bg-destructive/10"
-            onClick={() => onBan(user)}
-          >
-            <Ban className="h-4 w-4 mr-1" />
-            Ban
-          </Button>
-        )}
-      </div>
-    </TableCell>
-  </TableRow>
-));
-
-UserRow.displayName = 'UserRow';
-
 export default function AdminUsers() {
+  const { user: adminUser } = useAdminAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
-  const [userToBan, setUserToBan] = useState<User | null>(null);
-  const [banAction, setBanAction] = useState<'ban' | 'unban'>('ban');
+  const [search, setSearch] = useState('');
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [banReason, setBanReason] = useState('');
+  const [userToBan, setUserToBan] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
-  const [banning, setBanning] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
-  // Edit form state
-  const [editForm, setEditForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    country: '',
-    balance: 0,
-    rpc_code: '',
-    rpc_purchased: false,
-    status: '',
-  });
 
-  const [isSearching, setIsSearching] = useState(false);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  // Use React Query for counts
-  const { data: counts = { total: 0, rpcPurchased: 0, active: 0 }, isLoading: countsLoading } = useUserCounts();
-  const { invalidateUsers } = useInvalidateAdminData();
-
-  useEffect(() => {
-    fetchUsers(0, true);
-  }, []);
-
-  // Debounce search term
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Fetch users when search term changes
-  useEffect(() => {
-    const handleSearch = async () => {
-      if (debouncedSearchTerm && debouncedSearchTerm.trim().length > 0) {
-        await searchUsers(debouncedSearchTerm.trim());
-      } else if (debouncedSearchTerm === '') {
-        await fetchUsers(0, true);
-      }
-    };
-    handleSearch();
-  }, [debouncedSearchTerm]);
-
-  const searchUsers = async (term: string) => {
-    setIsSearching(true);
+  // Direct database fetch - no RPC
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
-      // Try RPC first, fall back to direct query
-      const rpcResult = await supabase.rpc('admin_get_users', {
-        p_limit: 100,
-        p_offset: 0,
-        p_search: term
-      });
-      
-      if (rpcResult.error) {
-        console.log('RPC search failed, trying direct query');
-        const directResult = await supabase
-          .from('users')
-          .select('*')
-          .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,user_id.ilike.%${term}%,phone.ilike.%${term}%,rpc_code.ilike.%${term}%`)
-          .order('created_at', { ascending: false })
-          .limit(100);
-        
-        if (directResult.error) throw directResult.error;
-        setUsers(directResult.data || []);
-      } else {
-        setUsers(rpcResult.data || []);
-      }
-      
-      setHasMore(false);
-    } catch (error) {
-      console.error('Error searching users:', error);
-      toast.error('Failed to search users');
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const fetchUsers = async (pageNum: number, reset: boolean = false) => {
-    try {
-      if (reset) setLoading(true);
-      else setIsLoadingMore(true);
-      
-      // Try RPC first, fall back to direct query
-      let data: any[] | null = null;
-      let error: any = null;
-      
-      // Try the admin RPC function first
-      const rpcResult = await supabase.rpc('admin_get_users', {
-        p_limit: PAGE_SIZE,
-        p_offset: pageNum * PAGE_SIZE,
-        p_search: null
-      });
-      
-      if (rpcResult.error) {
-        console.log('RPC failed, trying direct query:', rpcResult.error.message);
-        // Fall back to direct query
-        const directResult = await supabase
-          .from('users')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
-        
-        data = directResult.data;
-        error = directResult.error;
-      } else {
-        data = rpcResult.data;
-      }
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
-        console.error('Query error:', error);
-        throw error;
+        console.error('Error fetching users:', error);
+        toast.error('Failed to load users: ' + error.message);
+        return;
       }
-      
-      const newUsers = data || [];
-      setUsers(prev => reset ? newUsers : [...prev, ...newUsers]);
-      setHasMore(newUsers.length === PAGE_SIZE);
-      setPage(pageNum);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
+
+      setUsers(data || []);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      toast.error('Failed to load users');
     } finally {
       setLoading(false);
-      setIsLoadingMore(false);
     }
-  };
+  }, []);
 
-  const loadMore = useCallback(() => {
-    if (!debouncedSearchTerm && !isLoadingMore && hasMore) {
-      fetchUsers(page + 1);
-    }
-  }, [page, debouncedSearchTerm, isLoadingMore, hasMore]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-  // Virtual scrolling setup
-  const virtualizer = useVirtualizer({
-    count: users.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 72,
-    overscan: 10,
+  // Filter users based on search
+  const filteredUsers = users.filter(user => {
+    if (!search.trim()) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      user.first_name?.toLowerCase().includes(searchLower) ||
+      user.last_name?.toLowerCase().includes(searchLower) ||
+      user.email?.toLowerCase().includes(searchLower) ||
+      user.phone?.includes(search) ||
+      user.user_id?.includes(search)
+    );
   });
 
-  const handleScroll = useCallback(() => {
-    if (!parentRef.current || isLoadingMore || !hasMore || debouncedSearchTerm) return;
-    const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-    if (scrollHeight - scrollTop - clientHeight < 300) {
-      loadMore();
-    }
-  }, [loadMore, isLoadingMore, hasMore, debouncedSearchTerm]);
-
-  const openEditDialog = (user: User) => {
-    setSelectedUser(user);
-    setEditForm({
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      phone: user.phone,
-      country: user.country,
-      balance: user.balance || 0,
-      rpc_code: user.rpc_code || '',
-      rpc_purchased: user.rpc_purchased || false,
-      status: user.status || 'Active',
-    });
-    setIsEditDialogOpen(true);
+  const handleEdit = (user: User) => {
+    setEditUser({ ...user });
+    setEditDialogOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!selectedUser) return;
-
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
     setSaving(true);
-    
-    // Optimistic update
-    const updatedUsers = users.map(u => 
-      u.id === selectedUser.id 
-        ? { 
-            ...u, 
-            first_name: editForm.first_name,
-            last_name: editForm.last_name,
-            email: editForm.email,
-            phone: editForm.phone,
-            country: editForm.country,
-            balance: editForm.balance,
-            rpc_code: editForm.rpc_code || null,
-            rpc_purchased: editForm.rpc_purchased,
-            status: editForm.status,
-          } 
-        : u
-    );
-    setUsers(updatedUsers);
-    setIsEditDialogOpen(false);
-
     try {
       const { error } = await supabase
         .from('users')
         .update({
-          first_name: editForm.first_name,
-          last_name: editForm.last_name,
-          email: editForm.email,
-          phone: editForm.phone,
-          country: editForm.country,
-          balance: editForm.balance,
-          rpc_code: editForm.rpc_code || null,
-          rpc_purchased: editForm.rpc_purchased,
-          status: editForm.status,
+          first_name: editUser.first_name,
+          last_name: editUser.last_name,
+          email: editUser.email,
+          phone: editUser.phone,
+          balance: editUser.balance,
+          rpc_code: editUser.rpc_code,
         })
-        .eq('id', selectedUser.id);
+        .eq('id', editUser.id);
 
       if (error) throw error;
 
-      // Log the admin action in background
-      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      // Log the action
       if (adminUser) {
-        supabase.from('audit_logs').insert({
+        await supabase.from('audit_logs').insert({
           admin_user_id: adminUser.id,
-          action_type: 'user_updated',
-          target_user_id: selectedUser.user_id,
-          details: {
-            changes: editForm,
-            previous: {
-              first_name: selectedUser.first_name,
-              last_name: selectedUser.last_name,
-              email: selectedUser.email,
-              rpc_code: selectedUser.rpc_code,
-            },
-          },
+          action_type: 'user_edit',
+          target_user_id: editUser.user_id,
+          details: { edited_fields: ['first_name', 'last_name', 'email', 'phone', 'balance', 'rpc_code'] }
         });
       }
 
       toast.success('User updated successfully');
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('Failed to update user');
-      // Revert on error
-      fetchUsers(0, true);
+      setEditDialogOpen(false);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error('Failed to update user: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const generateRPCCode = () => {
-    const code = 'RPC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    setEditForm({ ...editForm, rpc_code: code, rpc_purchased: true });
-  };
-
-  const openBanDialog = (user: User, action: 'ban' | 'unban') => {
+  const openBanDialog = (user: User) => {
     setUserToBan(user);
-    setBanAction(action);
     setBanReason('');
-    setIsBanDialogOpen(true);
+    setBanDialogOpen(true);
   };
 
   const handleBanUser = async () => {
     if (!userToBan) return;
-
-    setBanning(true);
-    const newStatus = banAction === 'ban' ? 'Banned' : 'Active';
-    
-    // Optimistic update - update UI immediately
-    const updatedUsers = users.map(u => 
-      u.id === userToBan.id ? { ...u, status: newStatus } : u
-    );
-    setUsers(updatedUsers);
-    setIsBanDialogOpen(false);
-
+    setSaving(true);
     try {
-      const updateData: { status: string; ban_reason?: string | null } = { status: newStatus };
-      
-      // Add or clear ban reason based on action
-      if (banAction === 'ban' && banReason.trim()) {
-        updateData.ban_reason = banReason.trim();
-      } else if (banAction === 'unban') {
-        updateData.ban_reason = null;
-      }
-
+      const newStatus = userToBan.status === 'Banned' ? 'Active' : 'Banned';
       const { error } = await supabase
         .from('users')
-        .update(updateData)
+        .update({
+          status: newStatus,
+          ban_reason: newStatus === 'Banned' ? banReason : null
+        })
         .eq('id', userToBan.id);
 
       if (error) throw error;
 
-      // Log the admin action in background
-      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      // Log the action
       if (adminUser) {
-        supabase.from('audit_logs').insert({
+        await supabase.from('audit_logs').insert({
           admin_user_id: adminUser.id,
-          action_type: banAction === 'ban' ? 'user_banned' : 'user_unbanned',
+          action_type: newStatus === 'Banned' ? 'user_banned' : 'user_unbanned',
           target_user_id: userToBan.user_id,
-          details: {
-            user_email: userToBan.email,
-            user_name: `${userToBan.first_name} ${userToBan.last_name}`,
-            previous_status: userToBan.status,
-            new_status: newStatus,
-            ban_reason: banAction === 'ban' ? banReason.trim() : null,
-          },
+          details: { reason: banReason }
         });
       }
 
-      toast.success(
-        banAction === 'ban' 
-          ? `${userToBan.first_name} ${userToBan.last_name} has been banned` 
-          : `${userToBan.first_name} ${userToBan.last_name} has been unbanned`
-      );
-    } catch (error) {
-      console.error('Error updating user ban status:', error);
-      toast.error('Failed to update user status');
-      // Revert on error
-      fetchUsers(0, true);
+      toast.success(newStatus === 'Banned' ? 'User banned' : 'User unbanned');
+      setBanDialogOpen(false);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error('Failed to update user status: ' + err.message);
     } finally {
-      setBanning(false);
-      setUserToBan(null);
-      setBanReason('');
+      setSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        {/* Header skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-9 w-48" />
-            <Skeleton className="h-4 w-36" />
-          </div>
-          <Skeleton className="h-9 w-24" />
-        </div>
-
-        {/* Stats skeleton */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Search skeleton */}
-        <Card>
-          <CardContent className="pt-6">
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
-
-        {/* Table skeleton */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">User</TableHead>
-                    <TableHead className="w-[200px]">Contact</TableHead>
-                    <TableHead className="w-[120px]">RPC Code</TableHead>
-                    <TableHead className="w-[120px]">Balance</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[180px] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-36" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Skeleton className="h-8 w-16" />
-                          <Skeleton className="h-8 w-16" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading users...</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">View and edit user accounts</p>
-        </div>
-        <Button onClick={() => fetchUsers(0, true)} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard title="Total Users" value={counts.total} isLoading={countsLoading} />
-        <StatCard title="RPC Purchased" value={counts.rpcPurchased} isLoading={countsLoading} />
-        <StatCard title="Active Users" value={counts.active} isLoading={countsLoading} />
-      </div>
-
-      {/* Search */}
+      {/* Stats Card */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search all users by name, email, user ID, phone, or RPC code..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-            {isSearching && (
-              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-            )}
-          </div>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{users.length}</div>
         </CardContent>
       </Card>
 
-      {/* Users Table with Virtual Scrolling */}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, phone, or user ID..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Users Table */}
       <Card>
         <CardContent className="p-0">
-          <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">User</TableHead>
-                  <TableHead className="w-[200px]">Contact</TableHead>
-                  <TableHead className="w-[120px]">RPC Code</TableHead>
-                  <TableHead className="w-[120px]">Balance</TableHead>
-                  <TableHead className="w-[100px]">Status</TableHead>
-                  <TableHead className="w-[180px] text-right">Actions</TableHead>
+                  <TableHead>User ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
-            </Table>
-            
-            <div
-              ref={parentRef}
-              onScroll={handleScroll}
-              className="overflow-auto"
-              style={{ height: '600px' }}
-            >
-              {users.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-muted-foreground">
-                  {searchTerm ? `No users found for "${searchTerm}"` : 'No users found'}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    height: `${virtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
-                  }}
-                >
-                  <Table>
-                    <TableBody>
-                      {virtualizer.getVirtualItems().map((virtualRow) => {
-                        const user = users[virtualRow.index];
-                        return (
-                          <TableRow
-                            key={user.id}
-                            data-index={virtualRow.index}
-                            ref={virtualizer.measureElement}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              transform: `translateY(${virtualRow.start}px)`,
-                              display: 'table-row',
-                            }}
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {search ? 'No users found matching your search' : 'No users found'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-mono text-xs">{user.user_id}</TableCell>
+                      <TableCell>{user.first_name} {user.last_name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.phone}</TableCell>
+                      <TableCell>₦{(user.balance || 0).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={user.status === 'Banned' ? 'destructive' : 'default'}>
+                          {user.status || 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(user)}>
+                            <Edit className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={user.status === 'Banned' ? 'default' : 'destructive'}
+                            onClick={() => openBanDialog(user)}
                           >
-                            <TableCell className="w-[200px]">
-                              <div>
-                                <p className="font-medium">
-                                  {user.first_name} {user.last_name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{user.user_id}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[200px]">
-                              <div>
-                                <p className="text-sm">{user.email}</p>
-                                <p className="text-xs text-muted-foreground">{user.phone}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="w-[120px]">
-                              {user.rpc_code ? (
-                                <Badge variant="default" className="font-mono">
-                                  {user.rpc_code}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline">None</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="w-[120px]">
-                              <span className="font-medium">
-                                ₦{(user.balance || 0).toLocaleString()}
-                              </span>
-                            </TableCell>
-                            <TableCell className="w-[100px]">
-                              <Badge
-                                variant={
-                                  user.status === 'Active' 
-                                    ? 'default' 
-                                    : user.status === 'Banned' 
-                                      ? 'destructive' 
-                                      : 'secondary'
-                                }
-                              >
-                                {user.status || 'Active'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="w-[180px] text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openEditDialog(user)}
-                                >
-                                  <Edit className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Button>
-                                {user.status === 'Banned' ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-green-500 text-green-500 hover:bg-green-500/10"
-                                    onClick={() => openBanDialog(user, 'unban')}
-                                  >
-                                    <ShieldCheck className="h-4 w-4 mr-1" />
-                                    Unban
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => openBanDialog(user, 'ban')}
-                                  >
-                                    <Ban className="h-4 w-4 mr-1" />
-                                    Ban
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-              
-              {isLoadingMore && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
+                            {user.status === 'Banned' ? (
+                              <>
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Unban
+                              </>
+                            ) : (
+                              <>
+                                <Ban className="h-3 w-3 mr-1" />
+                                Ban
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
       {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>Update user information</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">First Name</Label>
+          {editUser && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>First Name</Label>
+                  <Input
+                    value={editUser.first_name}
+                    onChange={(e) => setEditUser({ ...editUser, first_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Last Name</Label>
+                  <Input
+                    value={editUser.last_name}
+                    onChange={(e) => setEditUser({ ...editUser, last_name: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Email</Label>
                 <Input
-                  id="first_name"
-                  value={editForm.first_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, first_name: e.target.value })
-                  }
+                  value={editUser.email}
+                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Last Name</Label>
+              <div>
+                <Label>Phone</Label>
                 <Input
-                  id="last_name"
-                  value={editForm.last_name}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, last_name: e.target.value })
-                  }
+                  value={editUser.phone}
+                  onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={editForm.email}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, email: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+              <div>
+                <Label>Balance</Label>
                 <Input
-                  id="phone"
-                  value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, phone: e.target.value })
-                  }
+                  type="number"
+                  value={editUser.balance || 0}
+                  onChange={(e) => setEditUser({ ...editUser, balance: parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
+              <div>
+                <Label>RPC Code</Label>
                 <Input
-                  id="country"
-                  value={editForm.country}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, country: e.target.value })
-                  }
+                  value={editUser.rpc_code || ''}
+                  onChange={(e) => setEditUser({ ...editUser, rpc_code: e.target.value })}
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="balance">Balance (₦)</Label>
-              <Input
-                id="balance"
-                type="number"
-                value={editForm.balance}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, balance: parseInt(e.target.value) || 0 })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="rpc_code">RPC Code</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="rpc_code"
-                  value={editForm.rpc_code}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, rpc_code: e.target.value })
-                  }
-                  placeholder="Enter or generate RPC code"
-                />
-                <Button type="button" variant="outline" onClick={generateRPCCode}>
-                  Generate
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Setting an RPC code will enable features for this user
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={editForm.status}
-                onValueChange={(value) =>
-                  setEditForm({ ...editForm, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Suspended">Suspended</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="rpc_purchased"
-                checked={editForm.rpc_purchased}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, rpc_purchased: e.target.checked })
-                }
-                className="h-4 w-4"
-              />
-              <Label htmlFor="rpc_purchased">RPC Purchased</Label>
-            </div>
-          </div>
+          )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-              disabled={saving}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? 'Saving...' : 'Save Changes'}
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Ban Confirmation Dialog */}
-      <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
-        <DialogContent className="max-w-md">
+      {/* Ban Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {banAction === 'ban' ? (
-                <>
-                  <ShieldX className="h-5 w-5 text-destructive" />
-                  Ban User
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="h-5 w-5 text-green-500" />
-                  Unban User
-                </>
-              )}
+            <DialogTitle>
+              {userToBan?.status === 'Banned' ? 'Unban User' : 'Ban User'}
             </DialogTitle>
             <DialogDescription>
-              {banAction === 'ban' 
-                ? `Are you sure you want to ban ${userToBan?.first_name} ${userToBan?.last_name}? They will be blocked from accessing the platform until unbanned.`
-                : `Are you sure you want to unban ${userToBan?.first_name} ${userToBan?.last_name}? They will regain full access to the platform.`
-              }
+              {userToBan?.status === 'Banned'
+                ? `Are you sure you want to unban ${userToBan?.first_name} ${userToBan?.last_name}?`
+                : `Are you sure you want to ban ${userToBan?.first_name} ${userToBan?.last_name}?`}
             </DialogDescription>
           </DialogHeader>
-          
-          {userToBan && (
-            <div className={`p-4 rounded-lg border ${banAction === 'ban' ? 'bg-destructive/10 border-destructive/20' : 'bg-green-500/10 border-green-500/20'}`}>
-              <div className="space-y-2 text-sm">
-                <p><strong>Name:</strong> {userToBan.first_name} {userToBan.last_name}</p>
-                <p><strong>Email:</strong> {userToBan.email}</p>
-                <p><strong>User ID:</strong> {userToBan.user_id}</p>
-                <p><strong>Current Status:</strong> {userToBan.status || 'Active'}</p>
-              </div>
-            </div>
-          )}
-
-          {banAction === 'ban' && (
-            <div className="space-y-2">
-              <Label htmlFor="ban_reason">Ban Reason (visible to user)</Label>
-              <Input
-                id="ban_reason"
+          {userToBan?.status !== 'Banned' && (
+            <div>
+              <Label>Ban Reason</Label>
+              <Textarea
                 value={banReason}
                 onChange={(e) => setBanReason(e.target.value)}
-                placeholder="e.g., Fraudulent activity, Terms of service violation..."
+                placeholder="Enter reason for banning this user..."
               />
-              <p className="text-xs text-muted-foreground">
-                This reason will be displayed to the user when they try to access the platform.
-              </p>
             </div>
           )}
-
-          <DialogFooter className="gap-2">
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>Cancel</Button>
             <Button
-              variant="outline"
-              onClick={() => setIsBanDialogOpen(false)}
-              disabled={banning}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant={banAction === 'ban' ? 'destructive' : 'default'}
+              variant={userToBan?.status === 'Banned' ? 'default' : 'destructive'}
               onClick={handleBanUser}
-              disabled={banning}
-              className={banAction === 'unban' ? 'bg-green-500 hover:bg-green-600' : ''}
+              disabled={saving}
             >
-              {banning ? (
-                <span className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  {banAction === 'ban' ? 'Banning...' : 'Unbanning...'}
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  {banAction === 'ban' ? <Ban className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-                  {banAction === 'ban' ? 'Ban User' : 'Unban User'}
-                </span>
-              )}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {userToBan?.status === 'Banned' ? 'Unban User' : 'Ban User'}
             </Button>
           </DialogFooter>
         </DialogContent>
