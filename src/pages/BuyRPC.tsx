@@ -9,7 +9,18 @@ import Logo from "@/components/Logo";
 import ProfileButton from "@/components/ProfileButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PaymentNoticeDialog from "@/components/PaymentNoticeDialog";
-import { Check, Copy, AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
+import { Check, Copy, AlertTriangle, CheckCircle2, ExternalLink, XCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +53,7 @@ const BuyRPC = () => {
   const [pendingPurchase, setPendingPurchase] = useState<any>(null);
   const [globalRpcCode, setGlobalRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const navigate = useNavigate();
   const [userId] = useState(localStorage.getItem("userId") || "1234567890");
@@ -407,6 +419,56 @@ const BuyRPC = () => {
             </div>
 
             <div className="space-y-3">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive"
+                    className="w-full" 
+                    size="lg"
+                    disabled={cancelling}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    {cancelling ? "Cancelling..." : "Cancel Payment Request"}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Payment Request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel this payment request? This action cannot be undone. 
+                      You will need to submit a new payment if you want to purchase RPC again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Request</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        setCancelling(true);
+                        try {
+                          const { error } = await supabase
+                            .from('rpc_purchases')
+                            .update({ status: 'cancelled' })
+                            .eq('id', pendingPurchase.id);
+                          
+                          if (error) throw error;
+                          
+                          setPendingPurchase(null);
+                          toast.success("Payment request cancelled successfully");
+                        } catch (error) {
+                          console.error('Error cancelling:', error);
+                          toast.error("Failed to cancel request. Please try again.");
+                        } finally {
+                          setCancelling(false);
+                        }
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Yes, Cancel Request
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
               <Button 
                 onClick={() => window.open('https://t.me/OfficialChixx9ja', '_blank')}
                 variant="outline"
