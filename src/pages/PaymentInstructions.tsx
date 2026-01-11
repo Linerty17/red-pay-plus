@@ -588,6 +588,38 @@ const PaymentInstructions = () => {
               </div>
             )}
 
+            {/* Activation Link Section */}
+            <div className="bg-secondary/50 border border-border rounded-xl p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">Activation Link</p>
+              <div className="flex items-center gap-2">
+                <Input 
+                  value="https://redpay-validation.vercel.app/" 
+                  readOnly 
+                  className="text-xs font-mono"
+                />
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText('https://redpay-validation.vercel.app/');
+                    toast.success('Activation link copied!');
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button 
+                onClick={openAdminApprovalPage}
+                variant="outline"
+                className="w-full border-primary/50 hover:bg-primary/10" 
+                size="lg"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open Activation Page
+              </Button>
+            </div>
+
             <div className="space-y-3">
               <Button 
                 onClick={() => navigate('/dashboard')}
