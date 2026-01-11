@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Video, Save, ExternalLink, Key, ShieldCheck } from 'lucide-react';
+import { Video, Save, ExternalLink, Key, ShieldCheck, Link } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInvalidateAdminData } from '@/hooks/useAdminData';
 
@@ -20,6 +20,10 @@ export default function AdminSettings() {
   // Admin PIN settings (now from private_settings)
   const [adminPin, setAdminPin] = useState('');
   const [savingPin, setSavingPin] = useState(false);
+
+  // Activation link settings
+  const [activationLink, setActivationLink] = useState('');
+  const [savingActivation, setSavingActivation] = useState(false);
 
   const { invalidateRpcCode, invalidateAll } = useInvalidateAdminData();
 
@@ -40,6 +44,9 @@ export default function AdminSettings() {
       publicData?.forEach((setting) => {
         if (setting.key === 'video_link') {
           setVideoLink(setting.value);
+        }
+        if (setting.key === 'activation_link') {
+          setActivationLink(setting.value);
         }
       });
 
@@ -198,6 +205,29 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveActivationLink = async () => {
+    if (!activationLink.trim()) {
+      toast.error('Please enter an activation link');
+      return;
+    }
+
+    setSavingActivation(true);
+    try {
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'activation_link', value: activationLink.trim(), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      toast.success('Activation link updated successfully');
+    } catch (error) {
+      console.error('Error saving activation link:', error);
+      toast.error('Failed to save activation link');
+    } finally {
+      setSavingActivation(false);
+    }
+  };
+
   const extractVideoId = (url: string): string | null => {
     const match = url.match(/video=([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
@@ -275,6 +305,40 @@ export default function AdminSettings() {
             </div>
             <p className="text-xs text-muted-foreground">
               This code is securely stored and only accessible by admins
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activation Link Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5 text-primary" />
+            Activation Link
+          </CardTitle>
+          <CardDescription>
+            The link shown to approved users for account activation/validation
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="activationLink">Activation URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id="activationLink"
+                placeholder="https://example.com/activate"
+                value={activationLink}
+                onChange={(e) => setActivationLink(e.target.value)}
+                disabled={loading}
+              />
+              <Button onClick={handleSaveActivationLink} disabled={savingActivation || loading}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingActivation ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This link is displayed to users after their payment is approved
             </p>
           </div>
         </CardContent>

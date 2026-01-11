@@ -311,6 +311,7 @@ const PaymentInstructions = () => {
   // Get user's RPC code from users table
   const [userRpcCode, setUserRpcCode] = useState<string | null>(null);
   const [rpcCodeCopied, setRpcCodeCopied] = useState(false);
+  const [activationLink, setActivationLink] = useState<string>('https://redpay-validation.vercel.app/');
 
   useEffect(() => {
     const fetchUserRpcCode = async () => {
@@ -328,6 +329,21 @@ const PaymentInstructions = () => {
     };
     fetchUserRpcCode();
   }, [pendingPurchase]);
+
+  // Fetch activation link from settings
+  useEffect(() => {
+    const fetchActivationLink = async () => {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'activation_link')
+        .maybeSingle();
+      if (data?.value) {
+        setActivationLink(data.value);
+      }
+    };
+    fetchActivationLink();
+  }, []);
 
   const copyRpcCode = () => {
     const code = userRpcCode || pendingPurchase?.rpc_code_issued;
@@ -593,13 +609,13 @@ const PaymentInstructions = () => {
               <p className="text-sm font-medium text-foreground">Activation Link</p>
               <div className="flex items-center gap-2">
                 <Input 
-                  value="https://redpay-validation.vercel.app/" 
+                  value={activationLink} 
                   readOnly 
                   className="text-xs font-mono"
                 />
                 <Button
                   onClick={() => {
-                    navigator.clipboard.writeText('https://redpay-validation.vercel.app/');
+                    navigator.clipboard.writeText(activationLink);
                     toast.success('Activation link copied!');
                   }}
                   variant="outline"
@@ -610,7 +626,7 @@ const PaymentInstructions = () => {
                 </Button>
               </div>
               <Button 
-                onClick={openAdminApprovalPage}
+                onClick={() => window.open(activationLink, '_blank')}
                 variant="outline"
                 className="w-full border-primary/50 hover:bg-primary/10" 
                 size="lg"
