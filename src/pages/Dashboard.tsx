@@ -28,7 +28,7 @@ import {
   Sparkles,
   BadgeCheck,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import advert1 from "@/assets/advert-1.png";
 import advert2 from "@/assets/advert-2.png";
@@ -55,20 +55,24 @@ const TELEGRAM_CHANNEL_URL = "https://t.me/Skypay261";
 const Dashboard = () => {
   const { profile, refreshProfile, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [nextClaimAt, setNextClaimAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoLink, setVideoLink] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
-const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
+  const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
     // Check if user has opted out of seeing this banner
     const neverShowAgain = localStorage.getItem('hideCommunityPopup');
     return neverShowAgain !== 'true';
   });
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
-  const [showPaymentStatus, setShowPaymentStatus] = useState(true);
+  // Only show payment status if navigating from Buy RPC page or on realtime update
+  const [showPaymentStatus, setShowPaymentStatus] = useState(() => {
+    return location.state?.showPaymentStatus === true;
+  });
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCommunityConfetti, setShowCommunityConfetti] = useState(false);
 
@@ -374,10 +378,12 @@ const [showTelegramBanner, setShowTelegramBanner] = useState(() => {
       />
 
       {/* Payment Status Overlay - Full Screen */}
-      {profile?.user_id && showPaymentStatus && (
+      {profile?.user_id && (
         <PaymentStatusOverlay 
           userId={profile.user_id}
           onClose={() => setShowPaymentStatus(false)}
+          checkOnMount={showPaymentStatus} // Only check on mount if navigated with state
+          onStatusFound={() => setShowPaymentStatus(true)} // Show overlay on realtime update
         />
       )}
 
