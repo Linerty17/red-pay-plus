@@ -31,8 +31,12 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
     fetchGlobalRpcCode();
     
     // Subscribe to realtime updates - this always runs to catch live updates
+    // Use unique channel name with userId to avoid conflicts on remount
+    const channelName = `payment-status-${userId}-${Date.now()}`;
+    console.log('PaymentStatusOverlay: Subscribing to realtime channel:', channelName, 'for user:', userId);
+    
     const channel = supabase
-      .channel('payment-status-overlay')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -42,9 +46,10 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
           filter: `user_id=eq.${userId}`
         },
         (payload) => {
-          console.log('Payment status updated:', payload);
+          console.log('PaymentStatusOverlay: Realtime update received:', payload);
           const newData = payload.new as any;
           if (newData && !newData.status_acknowledged && (newData.status === 'approved' || newData.status === 'rejected' || newData.status === 'cancelled')) {
+            console.log('PaymentStatusOverlay: Showing overlay for status:', newData.status);
             setPurchase(newData);
             onStatusFound?.(); // Notify parent to show overlay
             
@@ -62,7 +67,9 @@ export const PaymentStatusOverlay = ({ userId, onClose, checkOnMount = true, onS
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('PaymentStatusOverlay: Channel subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
