@@ -129,13 +129,19 @@ export default function AdminSettings() {
       const { error: usersError } = await supabase
         .from('users')
         .update({ rpc_code: newCode })
-        .neq('rpc_code', newCode); // Update all users who don't have this code
+        .neq('rpc_code', newCode);
       
       // Also update users with NULL rpc_code
       await supabase
         .from('users')
         .update({ rpc_code: newCode })
         .is('rpc_code', null);
+
+      // Update all approved rpc_purchases to show the new code
+      await supabase
+        .from('rpc_purchases')
+        .update({ rpc_code_issued: newCode })
+        .eq('status', 'approved');
 
       if (usersError) {
         console.error('Error updating users RPC codes:', usersError);
@@ -144,7 +150,7 @@ export default function AdminSettings() {
         // Invalidate cached RPC code so all admin pages get the new code
         invalidateRpcCode();
         invalidateAll();
-        toast.success('RPC access code updated for all users');
+        toast.success('RPC access code updated for all users and approved purchases');
       }
     } catch (error) {
       console.error('Error saving RPC access code:', error);
