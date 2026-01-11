@@ -227,14 +227,14 @@ const Withdraw = () => {
     }
   }, []);
 
-  // Trigger verification when account number reaches 10 digits and bank is selected
-  useEffect(() => {
-    if (formData.accountNumber.length === 10 && formData.bank) {
-      verifyAccount(formData.accountNumber, formData.bank);
-    } else {
-      setVerificationStatus('idle');
-    }
-  }, [formData.accountNumber, formData.bank, verifyAccount]);
+  // Paystack verification disabled for now
+  // useEffect(() => {
+  //   if (formData.accountNumber.length === 10 && formData.bank) {
+  //     verifyAccount(formData.accountNumber, formData.bank);
+  //   } else {
+  //     setVerificationStatus('idle');
+  //   }
+  // }, [formData.accountNumber, formData.bank, verifyAccount]);
 
   const handleWithdraw = async () => {
     if (!profile) {
