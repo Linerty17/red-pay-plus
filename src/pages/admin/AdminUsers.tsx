@@ -33,8 +33,10 @@ interface User {
 export default function AdminUsers() {
   const { user: adminUser } = useAdminAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState('');
   const [editUser, setEditUser] = useState<User | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -92,6 +94,43 @@ export default function AdminUsers() {
     }
   }, []);
 
+  // Search database directly
+  const searchUsers = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%,user_id.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setSearchResults(data || []);
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search.trim()) {
+        searchUsers(search);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, searchUsers]);
+
   useEffect(() => {
     fetchUsers(0);
     fetchTotalCount();
@@ -103,18 +142,8 @@ export default function AdminUsers() {
     fetchUsers(nextPage, true);
   };
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user => {
-    if (!search.trim()) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      user.first_name?.toLowerCase().includes(searchLower) ||
-      user.last_name?.toLowerCase().includes(searchLower) ||
-      user.email?.toLowerCase().includes(searchLower) ||
-      user.phone?.includes(search) ||
-      user.user_id?.includes(search)
-    );
-  });
+  // Show search results when searching, otherwise show paginated users
+  const displayUsers = search.trim() ? searchResults : users;
 
   const handleEdit = (user: User) => {
     setEditUser({ ...user });
@@ -227,12 +256,23 @@ export default function AdminUsers() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, email, phone, or user ID..."
+          placeholder="Type name, email, phone or user ID to search instantly..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
+          className="pl-10 pr-10"
         />
+        {searching && (
+          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
       </div>
+      {search.trim() && (
+        <p className="text-sm text-muted-foreground">
+          Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{search}"
+          <Button variant="link" className="p-0 h-auto ml-2" onClick={() => setSearch('')}>
+            Clear search
+          </Button>
+        </p>
+      )}
 
       {/* Users Table */}
       <Card>
@@ -251,14 +291,14 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {displayUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      {search ? 'No users found matching your search' : 'No users found'}
+                      {searching ? 'Searching...' : search ? 'No users found matching your search' : 'No users found'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  displayUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-mono text-xs">{user.user_id}</TableCell>
                       <TableCell>{user.first_name} {user.last_name}</TableCell>
