@@ -561,18 +561,6 @@ const PaymentInstructions = () => {
               </p>
             </div>
 
-            {/* Important Notice */}
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-center gap-2 text-primary font-semibold">
-                <AlertTriangle className="w-5 h-5" />
-                <span>Important: Activation Required</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Before using your RPC code, you must first copy your code below and validate/activate it using the validation link. 
-                Your code will not work until it has been properly activated.
-              </p>
-            </div>
-
             {/* RPC Code Display */}
             {displayCode && (
               <div className="bg-card border-2 border-primary/50 rounded-xl p-5 space-y-3 shadow-lg shadow-primary/10">
@@ -600,44 +588,10 @@ const PaymentInstructions = () => {
               </div>
             )}
 
-            {/* Validation Steps */}
-            <div className="bg-secondary/50 border border-border rounded-lg p-4 text-left space-y-2">
-              <p className="text-sm font-semibold text-foreground">Follow these steps:</p>
-              <ol className="text-xs text-muted-foreground space-y-1.5">
-                <li className="flex items-start gap-2">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
-                  <span>Copy your RPC code using the button above</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-                  <span>Click the "Activate Code" button below</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                  <span>Paste and validate your code on the activation page</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
-                  <span>Return here to access all features</span>
-                </li>
-              </ol>
-            </div>
-
             <div className="space-y-3">
-              {/* Validation Link Button */}
-              <Button 
-                onClick={() => window.open('https://redpay-validation.vercel.app/', '_blank')}
-                className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20" 
-                size="lg"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Click Here to Activate Code
-              </Button>
-              
               <Button 
                 onClick={() => navigate('/dashboard')}
-                variant="outline"
-                className="w-full" 
+                className="w-full bg-primary hover:bg-primary/90 shadow-lg" 
                 size="lg"
               >
                 Go to Dashboard
