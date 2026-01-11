@@ -252,6 +252,8 @@ export default function AdminUsers() {
       if (reset) setLoading(true);
       else setIsLoadingMore(true);
       
+      console.log('Fetching users with admin_get_users RPC...');
+      
       const { data, error } = await supabase
         .rpc('admin_get_users', {
           p_limit: PAGE_SIZE,
@@ -259,15 +261,21 @@ export default function AdminUsers() {
           p_search: null
         });
 
-      if (error) throw error;
+      console.log('RPC response:', { data, error });
+
+      if (error) {
+        console.error('RPC error details:', error);
+        throw error;
+      }
       
       const newUsers = data || [];
+      console.log('Fetched users count:', newUsers.length);
       setUsers(prev => reset ? newUsers : [...prev, ...newUsers]);
       setHasMore(newUsers.length === PAGE_SIZE);
       setPage(pageNum);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
+      toast.error('Failed to fetch users. Please log out and log back in.');
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
