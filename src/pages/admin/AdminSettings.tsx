@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Video, Save, ExternalLink, Key, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useInvalidateAdminData } from '@/hooks/useAdminData';
 
 export default function AdminSettings() {
   const [videoLink, setVideoLink] = useState('');
@@ -19,6 +20,8 @@ export default function AdminSettings() {
   // Admin PIN settings (now from private_settings)
   const [adminPin, setAdminPin] = useState('');
   const [savingPin, setSavingPin] = useState(false);
+
+  const { invalidateRpcCode, invalidateAll } = useInvalidateAdminData();
 
   useEffect(() => {
     fetchAllSettings();
@@ -132,6 +135,9 @@ export default function AdminSettings() {
         console.error('Error updating users RPC codes:', usersError);
         toast.error('Code saved but failed to update some users');
       } else {
+        // Invalidate cached RPC code so all admin pages get the new code
+        invalidateRpcCode();
+        invalidateAll();
         toast.success('RPC access code updated for all users');
       }
     } catch (error) {
